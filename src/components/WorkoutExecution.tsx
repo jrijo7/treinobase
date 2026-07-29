@@ -63,14 +63,17 @@ const extrairDivisoesEExercicios = (payload: any) => {
   if (!payload) return [];
 
   try {
-    // 1. Garante o parse caso o Supabase tenha retornado o JSONB como String
     const dados = typeof payload === 'string' ? JSON.parse(payload) : payload;
 
-    // 2. Procura pela lista de divisões em todas as chaves possíveis do sistema
-    const listaDivisoes = dados.divisoes || dados.blocos || dados.rotinas || dados.fichas;
+    // 1. Array puro de divisões (Formato Flat / Antigo)
+    if (Array.isArray(dados)) {
+       return [{ id: 'div-unica', nome: 'Treino Completo', exercicios: dados }];
+    }
 
+    // 2. Procura pela lista estruturada
+    const listaDivisoes = dados.divisoes || dados.blocos || dados.rotinas || dados.fichas;
+    
     if (Array.isArray(listaDivisoes) && listaDivisoes.length > 0) {
-      // Mapeia normalizando para um formato único: { id, nome, exercicios: [] }
       return listaDivisoes.map((div, idx) => ({
         id: div.id || `div-${idx}`,
         nome: div.nome || div.titulo || `Divisão ${String.fromCharCode(65 + idx)}`,
@@ -78,17 +81,13 @@ const extrairDivisoesEExercicios = (payload: any) => {
       }));
     }
 
-    // 3. Fallback: Se os exercícios estiverem salvos na raiz do objeto (estrutura flat)
-    const listaExerciciosFlat = dados.exercicios || dados.items || dados.itens || (Array.isArray(dados) ? dados : []);
-    if (listaExerciciosFlat.length > 0) {
-      return [{
-        id: 'div-unica',
-        nome: 'Treino Completo',
-        exercicios: listaExerciciosFlat
-      }];
+    // 3. Fallback: JSON sem raiz de divisões, mas com array de exercícios flat
+    const listaExerciciosFlat = dados.exercicios || dados.items || dados.itens;
+    if (Array.isArray(listaExerciciosFlat) && listaExerciciosFlat.length > 0) {
+      return [{ id: 'div-unica', nome: 'Treino Completo', exercicios: listaExerciciosFlat }];
     }
-  } catch (e) {
-    console.error("Erro no parse do JSONB", e);
+  } catch {
+    // Falha silenciosa: Se o JSON estiver quebrado, retorna array vazio para o EmptyState da UI atuar.
   }
 
   return [];
@@ -99,10 +98,7 @@ export default function WorkoutExecution({ workout, user, onFinish, onCancel, on
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isFinishing, setIsFinishing] = useState(false);
 
-  // Debug de Segurança
-  useEffect(() => {
-    console.log("[PLUS ULTRA DEBUG] Payload Raw do Banco:", workout.estrutura || workout);
-  }, [workout]);
+  // Debug de Segurança (Removido do Code Freeze)
 
   // Tab state for when there are multiple divisions
   const divisoesProcessadas = extrairDivisoesEExercicios(workout.estrutura || workout.conteudo || workout);

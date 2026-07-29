@@ -52,7 +52,6 @@ export default function PersonalDashboard({
       // ETAPA 2: FALLBACK (AUTO-HEALING)
       // Se não encontrou vínculos, vamos procurar na tabela de treinos para ver se o personal tem alunos lá
       if (activeVinculos.length === 0) {
-        console.log("Nenhum vínculo encontrado em personal_aluno. Iniciando Auto-Healing...");
         
         // Busca treinos criados por este personal que tenham um aluno_id vinculado
         const { data: treinos, error: errTreinos } = await supabase
@@ -66,7 +65,6 @@ export default function PersonalDashboard({
           const uniqueAlunoIds = Array.from(new Set(treinos.map(t => t.aluno_id).filter(Boolean)));
           
           if (uniqueAlunoIds.length > 0) {
-            console.log(`Auto-Healing: Inserindo ${uniqueAlunoIds.length} alunos perdidos na tabela personal_aluno...`);
             
             // Prepara os novos registros
             const novosVinculos = uniqueAlunoIds.map(id => ({
