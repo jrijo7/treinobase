@@ -1,0 +1,6 @@
+{
+  "name": "TreinoBase",
+  "description": "Acompanhamento de treino premium e inteligente em blocos para personal trainers e alunos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
