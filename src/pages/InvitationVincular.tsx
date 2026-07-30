@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { User, ShieldCheck, Check, Send, AlertTriangle, RefreshCw, Sparkles, UserCheck } from 'lucide-react';
 
-import { supabase } from '../lib/supabase';
+import { supabase } from '../services/supabaseClient';
 import { User as UserType } from '../types';
 
 interface InvitationVincularProps {
@@ -9,7 +9,10 @@ interface InvitationVincularProps {
   onLinkTrainer: (trainerCode: string) => void;
 }
 
-export default function InvitationVincular({ currentUser, onLinkTrainer }: InvitationVincularProps) {
+import { useOutletContext } from 'react-router-dom';
+
+export default function InvitationVincular() {
+  const { currentUser, onLinkTrainer } = useOutletContext<any>();
   const [trainerCodeInput, setTrainerCodeInput] = useState('');
   const [status, setStatus] = useState<'unlinked' | 'pending' | 'linked'>('unlinked');
   const [trainerName, setTrainerName] = useState('');
@@ -76,13 +79,13 @@ export default function InvitationVincular({ currentUser, onLinkTrainer }: Invit
 
       if (inviteErr) throw inviteErr;
       if (!invites || invites.length === 0) {
-        throw new Error('Convite inválido ou não encontrado.');
+        throw new Error('Convite invÃ¡lido ou nÃ£o encontrado.');
       }
 
       const invite = invites[0];
 
       if (invite.status !== 'pending') {
-        throw new Error(`Este convite já foi utilizado ou está ${invite.status}.`);
+        throw new Error(`Este convite jÃ¡ foi utilizado ou estÃ¡ ${invite.status}.`);
       }
 
       if (new Date(invite.expires_at) < new Date()) {
@@ -90,7 +93,7 @@ export default function InvitationVincular({ currentUser, onLinkTrainer }: Invit
       }
 
       if (invite.student_email && invite.student_email !== currentUser.email) {
-        throw new Error('Este convite foi gerado para outro endereço de e-mail.');
+        throw new Error('Este convite foi gerado para outro endereÃ§o de e-mail.');
       }
 
       // 2. Link in personal_aluno table
@@ -115,7 +118,7 @@ export default function InvitationVincular({ currentUser, onLinkTrainer }: Invit
       setStatus('linked');
       setTrainerName(trainerName || 'Prof. Desconhecido');
       onLinkTrainer(upperCode);
-      setFeedback(`Vínculo realizado com sucesso! Você agora é aluno do professor ${trainerName || 'Desconhecido'}.`);
+      setFeedback(`VÃ­nculo realizado com sucesso! VocÃª agora Ã© aluno do professor ${trainerName || 'Desconhecido'}.`);
       setTrainerCodeInput('');
 
     } catch (err: any) {
@@ -126,7 +129,7 @@ export default function InvitationVincular({ currentUser, onLinkTrainer }: Invit
   };
 
   const handleUnlink = async () => {
-    if (confirm('Tem certeza que deseja encerrar o vínculo com o personal? Você manterá 100% de seu histórico de treinos e cargas, mas o personal não poderá mais visualizar seu progresso.')) {
+    if (confirm('Tem certeza que deseja encerrar o vÃ­nculo com o personal? VocÃª manterÃ¡ 100% de seu histÃ³rico de treinos e cargas, mas o personal nÃ£o poderÃ¡ mais visualizar seu progresso.')) {
       try {
         await supabase
           .from('personal_aluno')
@@ -135,7 +138,7 @@ export default function InvitationVincular({ currentUser, onLinkTrainer }: Invit
 
         setStatus('unlinked');
         setTrainerName('');
-        setFeedback('Vínculo encerrado de forma segura. Seus treinos e históricos continuam salvos na sua conta.');
+        setFeedback('VÃ­nculo encerrado de forma segura. Seus treinos e histÃ³ricos continuam salvos na sua conta.');
       } catch (e) {
         setFeedback('Erro ao tentar desvincular.');
       }
@@ -147,8 +150,8 @@ export default function InvitationVincular({ currentUser, onLinkTrainer }: Invit
       
       {/* Header */}
       <div>
-        <span className="text-[10px] sm:text-xs uppercase font-bold tracking-widest text-lime-electric block">CONEXÃO SEGURA</span>
-        <h1 className="font-sora font-extrabold text-lg sm:text-2xl text-text-primary">Vínculo por Convite</h1>
+        <span className="text-[10px] sm:text-xs uppercase font-bold tracking-widest text-lime-electric block">CONEXÃƒO SEGURA</span>
+        <h1 className="font-sora font-extrabold text-lg sm:text-2xl text-text-primary">VÃ­nculo por Convite</h1>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -163,20 +166,20 @@ export default function InvitationVincular({ currentUser, onLinkTrainer }: Invit
                   <UserCheck className="w-6 h-6 text-success animate-pulse" />
                 </div>
                 <div>
-                  <h3 className="font-sora font-bold text-sm text-text-primary">Vínculo Ativo</h3>
+                  <h3 className="font-sora font-bold text-sm text-text-primary">VÃ­nculo Ativo</h3>
                   <p className="text-xs text-text-secondary mt-1 leading-relaxed">
-                    Conectado com <span className="text-text-primary font-bold">{trainerName}</span>. Seus treinos e sessões estão sincronizados.
+                    Conectado com <span className="text-text-primary font-bold">{trainerName}</span>. Seus treinos e sessÃµes estÃ£o sincronizados.
                   </p>
                 </div>
               </div>
 
               <div className="pt-3 flex justify-between items-center text-xs border-t border-success/20">
-                <span className="text-text-secondary">Vínculo estabelecido</span>
+                <span className="text-text-secondary">VÃ­nculo estabelecido</span>
                 <button
                   onClick={handleUnlink}
                   className="text-red-400 font-bold hover:underline"
                 >
-                  Encerrar Vínculo
+                  Encerrar VÃ­nculo
                 </button>
               </div>
             </div>
@@ -188,7 +191,7 @@ export default function InvitationVincular({ currentUser, onLinkTrainer }: Invit
               <div>
                 <h3 className="font-sora font-bold text-sm text-text-secondary">Nenhum Personal Vinculado</h3>
                 <p className="text-xs text-text-muted mt-1 leading-relaxed">
-                  Você está treinando por conta própria. Pode prescrever seus próprios treinos ou aceitar o convite do seu Personal Trainer ao lado.
+                  VocÃª estÃ¡ treinando por conta prÃ³pria. Pode prescrever seus prÃ³prios treinos ou aceitar o convite do seu Personal Trainer ao lado.
                 </p>
               </div>
             </div>
@@ -203,7 +206,7 @@ export default function InvitationVincular({ currentUser, onLinkTrainer }: Invit
               <h3 className="font-sora font-bold text-xs sm:text-sm text-text-primary uppercase tracking-wider">Vincular Token do Personal</h3>
               
               <p className="text-xs text-text-secondary leading-relaxed">
-                Se seu personal enviou um token de acesso (ex: <code className="bg-surf-2 px-1 rounded text-lime-electric font-mono tracking-widest">K9F2MX</code>), insira abaixo para realizar a conexão.
+                Se seu personal enviou um token de acesso (ex: <code className="bg-surf-2 px-1 rounded text-lime-electric font-mono tracking-widest">K9F2MX</code>), insira abaixo para realizar a conexÃ£o.
               </p>
 
               <div className="space-y-1.5">
@@ -247,7 +250,7 @@ export default function InvitationVincular({ currentUser, onLinkTrainer }: Invit
               <span>Sua Conta, Seus Dados</span>
             </div>
             <p>
-              No <span className="text-text-primary font-semibold">TreinoBase</span>, o aluno é dono permanente do seu próprio histórico. Ao encerrar um vínculo com qualquer personal trainer, <strong className="text-text-primary font-semibold">seus históricos de 1RM, cargas, sessões e anotações permanecem integralmente salvos com você</strong>. O treinador perde apenas o acesso de visualização dali por diante.
+              No <span className="text-text-primary font-semibold">TreinoBase</span>, o aluno Ã© dono permanente do seu prÃ³prio histÃ³rico. Ao encerrar um vÃ­nculo com qualquer personal trainer, <strong className="text-text-primary font-semibold">seus histÃ³ricos de 1RM, cargas, sessÃµes e anotaÃ§Ãµes permanecem integralmente salvos com vocÃª</strong>. O treinador perde apenas o acesso de visualizaÃ§Ã£o dali por diante.
             </p>
           </div>
         </div>
@@ -257,3 +260,4 @@ export default function InvitationVincular({ currentUser, onLinkTrainer }: Invit
     </div>
   );
 }
+

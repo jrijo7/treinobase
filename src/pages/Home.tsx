@@ -4,10 +4,10 @@ import {
   ChevronRight, ChevronDown, ArrowLeft, Plus, Flame, Clock, Heart, Users, Trash2, Trash, Camera, MessageCircle, Zap, Layers, X, Upload, Maximize2, CheckCircle, AlertCircle, Search, Copy
 } from 'lucide-react';
 import { Workout, User, WorkoutSession, Student } from '../types';
-import { supabase } from '../lib/supabase';
-import CalendarModal from './CalendarModal';
-import { EmptyState } from './ui/EmptyState';
-import { Skeleton } from './ui/Skeleton';
+import { supabase } from '../services/supabaseClient';
+import CalendarModal from '../components/CalendarModal';
+import { EmptyState } from '../components/ui/EmptyState';
+import { Skeleton } from '../components/ui/Skeleton';
 
 const formatarDescanso = (val: string) => {
   if (!val) return '';
@@ -43,17 +43,17 @@ interface HomeProps {
 }
 
 const getMetodoConfig = (tipo: string) => {
-  if (['Drop-set', 'Rest-pause', 'Set 21', 'Parciais', 'Forçada', 'Exaustão'].includes(tipo)) {
+  if (['Drop-set', 'Rest-pause', 'Set 21', 'Parciais', 'ForÃ§ada', 'ExaustÃ£o'].includes(tipo)) {
     return { 
       tipo, 
       arquetipo: 'intensificacao', 
       config: tipo === 'Drop-set' ? { qtd_drops: 2 } : tipo === 'Rest-pause' ? { pausa: 15 } : {} 
     };
   }
-  if (['Pirâmide Crescente', 'Pirâmide Decrescente'].includes(tipo)) {
+  if (['PirÃ¢mide Crescente', 'PirÃ¢mide Decrescente'].includes(tipo)) {
     return { tipo, arquetipo: 'piramide', config: { series_setup: [] } };
   }
-  if (['GVT', 'FST-7', 'Isométrico', 'Negativo', 'Super Slow'].includes(tipo)) {
+  if (['GVT', 'FST-7', 'IsomÃ©trico', 'Negativo', 'Super Slow'].includes(tipo)) {
     return { tipo, arquetipo: 'tensao', config: { cadencia: '' } };
   }
   return { tipo: 'Normal', arquetipo: 'normal', config: {} };
@@ -62,7 +62,7 @@ const getMetodoConfig = (tipo: string) => {
 const calcularDiasParaVencer = (criadoEm: string, validadeStr?: string): number | null => {
   if (!criadoEm) return null;
 
-  // 1. Normaliza a data de criação (suporta tanto ISO "YYYY-MM-DD" quanto "DD/MM/YYYY")
+  // 1. Normaliza a data de criaÃ§Ã£o (suporta tanto ISO "YYYY-MM-DD" quanto "DD/MM/YYYY")
   let dataCriacao: Date;
   if (criadoEm.includes('/')) {
     const [dia, mes, ano] = criadoEm.split('/');
@@ -73,21 +73,21 @@ const calcularDiasParaVencer = (criadoEm: string, validadeStr?: string): number 
 
   if (isNaN(dataCriacao.getTime())) return null;
 
-  // 2. Extrai os dias da string de validade (ex: "4 semanas (1 mês)" -> 30 dias)
-  let diasValidade = 30; // Padrão 30 dias se não especificado
+  // 2. Extrai os dias da string de validade (ex: "4 semanas (1 mÃªs)" -> 30 dias)
+  let diasValidade = 30; // PadrÃ£o 30 dias se nÃ£o especificado
   if (validadeStr) {
-    if (validadeStr.includes('4 semanas') || validadeStr.includes('1 mês')) diasValidade = 30;
+    if (validadeStr.includes('4 semanas') || validadeStr.includes('1 mÃªs')) diasValidade = 30;
     else if (validadeStr.includes('6 semanas')) diasValidade = 42;
     else if (validadeStr.includes('8 semanas') || validadeStr.includes('2 meses')) diasValidade = 60;
     else if (validadeStr.includes('12 semanas') || validadeStr.includes('3 meses')) diasValidade = 90;
     else {
-      // Tenta extrair apenas números caso seja uma string customizada
+      // Tenta extrair apenas nÃºmeros caso seja uma string customizada
       const nums = validadeStr.match(/\d+/);
       if (nums) diasValidade = Number(nums[0]) * (validadeStr.toLowerCase().includes('semana') ? 7 : 1);
     }
   }
 
-  // 3. Calcula a diferença em dias até o vencimento
+  // 3. Calcula a diferenÃ§a em dias atÃ© o vencimento
   const dataVencimento = new Date(dataCriacao);
   dataVencimento.setDate(dataVencimento.getDate() + diasValidade);
 
@@ -99,18 +99,22 @@ const calcularDiasParaVencer = (criadoEm: string, validadeStr?: string): number 
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 
-export default function Home({ 
-  user, 
-  workouts, 
-  sessions, 
-  students = [],
-  activeWorkoutId,
-  onStartWorkout, 
-  onCreateNewWorkout,
-  onDeleteWorkout,
-  onNavigateToTab,
-  onUpdateUser
-}: HomeProps) {
+import { useOutletContext, useNavigate } from 'react-router-dom';
+
+export default function Home() {
+  const { 
+    user, 
+    workouts, 
+    sessions, 
+    students = [],
+    activeWorkoutId,
+    onStartWorkout, 
+    onCreateNewWorkout,
+    onDeleteWorkout,
+    onUpdateUser
+  } = useOutletContext<any>();
+  const navigate = useNavigate();
+  const onNavigateToTab = (tab: string) => navigate(tab === 'home' ? '/' : `/${tab}`);
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -195,8 +199,8 @@ export default function Home({
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !sessionData.session) {
-        console.error('Sessão de autenticação ausente ou expirada!', sessionError);
-        throw new Error('Sessão de autenticação expirada. Faça login novamente.');
+        console.error('SessÃ£o de autenticaÃ§Ã£o ausente ou expirada!', sessionError);
+        throw new Error('SessÃ£o de autenticaÃ§Ã£o expirada. FaÃ§a login novamente.');
       }
 
       console.log('Tentando excluir o treino com UUID:', id);
@@ -216,7 +220,7 @@ export default function Home({
         throw error;
       }
       
-      showToast('Treino excluído com sucesso.', 'success');
+      showToast('Treino excluÃ­do com sucesso.', 'success');
       
       if (onDeleteWorkout) {
           try {
@@ -232,7 +236,7 @@ export default function Home({
       console.error('Erro ao excluir treino (catch):', err);
       
       if (err.code === '23503') {
-          showToast('Não é possível excluir: este treino já possui histórico de sessões vinculadas.', 'error');
+          showToast('NÃ£o Ã© possÃ­vel excluir: este treino jÃ¡ possui histÃ³rico de sessÃµes vinculadas.', 'error');
       } else {
           showToast(typeof err.message === 'string' ? err.message : 'Erro ao excluir treino no banco de dados', 'error');
       }
@@ -248,7 +252,7 @@ export default function Home({
     try {
       const payloadClonado = {
         personal_id: treino.creatorId,
-        titulo: `${treino.name || (treino as any).titulo} (Cópia)`,
+        titulo: `${treino.name || (treino as any).titulo} (CÃ³pia)`,
         descricao: treino.description || (treino as any).descricao || '',
         blocos: (treino as any).blocos || 1,
         exercicios: (treino as any).exercicios || 1,
@@ -360,7 +364,7 @@ export default function Home({
               exercicios: p.exercicios || 1,
               estrutura: p.estrutura || p.conteudo,
               conteudo: p.conteudo || p.estrutura,
-              blocks: [] // Mantenho vazio para não quebrar compatibilidade de tipo antigo caso necessário
+              blocks: [] // Mantenho vazio para nÃ£o quebrar compatibilidade de tipo antigo caso necessÃ¡rio
             }));
             
             if (isMounted) setDynamicWorkouts(mappedWorkouts as any);
@@ -447,7 +451,7 @@ export default function Home({
               const valDate = new Date(p.data_validade);
               const diffTime = valDate.getTime() - today.getTime();
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              // Mostrar se está vencido (<= 0) ou se falta 5 dias (<= 5)
+              // Mostrar se estÃ¡ vencido (<= 0) ou se falta 5 dias (<= 5)
               return diffDays <= 5;
             }).map(p => {
               const valDate = new Date(p.data_validade);
@@ -455,7 +459,7 @@ export default function Home({
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
               
               // Pegar nome do aluno
-              const alunoNome = fetchedStudents.find(s => s.id === p.aluno_id)?.name || 'Aluno Excluído';
+              const alunoNome = fetchedStudents.find(s => s.id === p.aluno_id)?.name || 'Aluno ExcluÃ­do';
               
               return {
                 ...p,
@@ -532,7 +536,7 @@ export default function Home({
                 const nameStr = studentData?.name || 'Aluno';
                 
                 const lastSession = lastSessionMap.get(id);
-                // CRITÉRIO DE DESTAQUE: Aluno teve sessão nos últimos 7 dias. Inativo: Sem registro nos últimos 7 dias.
+                // CRITÃ‰RIO DE DESTAQUE: Aluno teve sessÃ£o nos Ãºltimos 7 dias. Inativo: Sem registro nos Ãºltimos 7 dias.
                 const isHighlight = lastSession ? lastSession >= sevenDaysAgo : false;
                 
                 return {
@@ -545,12 +549,12 @@ export default function Home({
               
               if (isMounted) setB2bStudents(studentsWithStatus);
               
-              // Mapear sessões recentes (Sessões)
+              // Mapear sessÃµes recentes (SessÃµes)
               const recents = logsData.filter((log: any) => new Date(log.data_execucao) >= fiveDaysAgo).map((log: any) => {
                 return {
                   id: log.id,
                   studentName: log.aluno?.name || 'Aluno',
-                  workoutTitle: log.treino?.titulo || 'Treino Concluído',
+                  workoutTitle: log.treino?.titulo || 'Treino ConcluÃ­do',
                   date: log.data_execucao
                 };
               });
@@ -592,7 +596,7 @@ export default function Home({
 
   const handleRemoveDivisao = (divisaoId: string) => {
     if (divisoesArray.length <= 1) {
-      showToast("Você precisa ter pelo menos uma divisão no programa.", "error");
+      showToast("VocÃª precisa ter pelo menos uma divisÃ£o no programa.", "error");
       return;
     }
     const newArray = divisoesArray.filter(d => d.id !== divisaoId);
@@ -646,7 +650,7 @@ export default function Home({
             let extras = {};
             if (campo === 'metodo') {
                updatedValue = getMetodoConfig(valor);
-               // Aplicação do Arquétipo 4 (Travas)
+               // AplicaÃ§Ã£o do ArquÃ©tipo 4 (Travas)
                if (valor === 'GVT') extras = { series: '10', reps: '10', descanso: '60s' };
                if (valor === 'FST-7') extras = { series: '7', descanso: '30s a 45s' };
                if (valor === 'Set 21') extras = { reps: '21' };
@@ -726,7 +730,7 @@ export default function Home({
                     let extras = {};
                     if (campo === 'metodo') {
                        updatedValue = getMetodoConfig(valor);
-                       // Aplicação do Arquétipo 4 (Travas)
+                       // AplicaÃ§Ã£o do ArquÃ©tipo 4 (Travas)
                        if (valor === 'GVT') extras = { series: '10', reps: '10', descanso: '60s' };
                        if (valor === 'FST-7') extras = { series: '7', descanso: '30s a 45s' };
                        if (valor === 'Set 21') extras = { reps: '21' };
@@ -774,7 +778,7 @@ export default function Home({
     if (!newModelData.title.trim()) return;
     
     if (divisoesArray.length === 0 || divisoesArray.every(d => !d.itens || d.itens.length === 0)) {
-      showToast('Seu programa precisa ter pelo menos 1 divisão e 1 exercício válido.', 'error');
+      showToast('Seu programa precisa ter pelo menos 1 divisÃ£o e 1 exercÃ­cio vÃ¡lido.', 'error');
       return;
     }
 
@@ -793,7 +797,7 @@ export default function Home({
       const payload = {
         personal_id: user.id,
         titulo: newModelData.title.trim(),
-        descricao: newModelData.description?.trim() || 'Sem descrição cadastrada.',
+        descricao: newModelData.description?.trim() || 'Sem descriÃ§Ã£o cadastrada.',
         blocos: divisoesArray.length,
         exercicios: divisoesArray.reduce((acc, div) => {
           let c = 0;
@@ -820,12 +824,12 @@ export default function Home({
       let savedWorkoutData = null;
 
       if (treinoEmEdicao) {
-        // Modo: Edição ou Clonagem
+        // Modo: EdiÃ§Ã£o ou Clonagem
         const wasLibraryModel = treinoEmEdicao.aluno_id === null;
         const isAssigningToStudent = payload.aluno_id !== null;
 
         if (wasLibraryModel && isAssigningToStudent) {
-            // CENÁRIO A: Template Forking (Clonagem)
+            // CENÃRIO A: Template Forking (Clonagem)
             const payloadClone = { ...payload } as any;
             delete payloadClone.id;
             
@@ -837,14 +841,14 @@ export default function Home({
               
             if (error) {
               console.error("Supabase Error (Clone):", error);
-              showToast(`Erro ao clonar: ${error.message || 'Falha de comunicação'}`, 'error');
+              showToast(`Erro ao clonar: ${error.message || 'Falha de comunicaÃ§Ã£o'}`, 'error');
               setIsSavingModel(false);
               return;
             }
             savedWorkoutData = novaCopia;
             showToast('Treino prescrito a partir do modelo com sucesso!', 'success');
         } else {
-            // CENÁRIO B: Atualização Padrão
+            // CENÃRIO B: AtualizaÃ§Ã£o PadrÃ£o
             const { data: treinoAtualizado, error } = await supabase
               .from('treinos')
               .update(payload)
@@ -854,7 +858,7 @@ export default function Home({
 
             if (error) {
               console.error("Supabase Error (Update):", error);
-              showToast(`Erro ao atualizar: ${error.message || 'Falha de comunicação'}`, 'error');
+              showToast(`Erro ao atualizar: ${error.message || 'Falha de comunicaÃ§Ã£o'}`, 'error');
               setIsSavingModel(false);
               return;
             }
@@ -871,7 +875,7 @@ export default function Home({
 
         if (error) {
           console.error("Supabase Error (Insert):", error);
-          showToast(`Erro ao salvar: ${error.message || 'Falha de comunicação'}`, 'error');
+          showToast(`Erro ao salvar: ${error.message || 'Falha de comunicaÃ§Ã£o'}`, 'error');
           setIsSavingModel(false);
           return;
         }
@@ -893,10 +897,10 @@ export default function Home({
       };
 
       if (treinoEmEdicao && !(treinoEmEdicao.aluno_id === null && payload.aluno_id !== null)) {
-         // Cenário B optimistic update
+         // CenÃ¡rio B optimistic update
          setDynamicWorkouts(prev => prev.map(t => t.id === treinoEmEdicao.id ? mappedWorkout : t));
       } else {
-         // Cenário A or New optimistic update
+         // CenÃ¡rio A or New optimistic update
          setDynamicWorkouts(prev => [mappedWorkout, ...prev]);
          setTreinosCount(prev => prev + 1);
       }
@@ -953,7 +957,7 @@ export default function Home({
 
       if (newPlanError || !newPlan) throw newPlanError;
       
-      showToast('Treino atribuído com sucesso!', 'success');
+      showToast('Treino atribuÃ­do com sucesso!', 'success');
       setAssigningWorkoutId(null);
       const studentName = b2bStudents.find(s => s.id === alunoId)?.name || 'Aluno';
       showToast(`Treino disponibilizado para ${studentName} com sucesso!`, 'success');
@@ -1040,7 +1044,7 @@ export default function Home({
   };
   
   // KPIs computations
-  // Sync instantâneo mesclando dados locais de sessions e dbSessions
+  // Sync instantÃ¢neo mesclando dados locais de sessions e dbSessions
   const totalCompletedWorkouts = Math.max(sessions.length, dbSessions.length);
   const streakDays = sessions.length > 0 ? sessions.length * 2 + 1 : 0; // Simulated dynamic streak
 
@@ -1202,7 +1206,7 @@ export default function Home({
           {user.role === 'personal' ? (
             <>
               <Users className="w-4 h-4 text-lime-electric" />
-              <span className="hidden sm:inline">Gestão de Alunos</span>
+              <span className="hidden sm:inline">GestÃ£o de Alunos</span>
             </>
           ) : (
             <>
@@ -1242,14 +1246,14 @@ export default function Home({
 
             <div className="bg-surf-1 border border-surf-2 p-3.5 sm:p-5 rounded-2xl flex flex-col justify-between">
               <div className="flex justify-between items-center text-text-secondary">
-                <span className="text-[9px] sm:text-xs font-bold uppercase tracking-wider">Taxa de Aderência</span>
+                <span className="text-[9px] sm:text-xs font-bold uppercase tracking-wider">Taxa de AderÃªncia</span>
                 <TrendingUp className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-lime-electric" />
               </div>
               <div className="mt-3">
                 <span className="text-xl sm:text-3xl font-mono font-bold block truncate">
                   {adherenceRate}%
                 </span>
-                <span className="text-[9px] sm:text-xs text-text-muted">Nos últimos 7 dias</span>
+                <span className="text-[9px] sm:text-xs text-text-muted">Nos Ãºltimos 7 dias</span>
               </div>
             </div>
           </div>
@@ -1278,11 +1282,11 @@ export default function Home({
             <div className="bg-surf-1 border border-surf-2 rounded-2xl p-5 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-1 h-full bg-error"></div>
               <h3 className="font-sora font-bold text-sm text-text-primary flex items-center gap-2 mb-4">
-                <Clock className="w-4 h-4 text-error" /> Precisam de Atenção
+                <Clock className="w-4 h-4 text-error" /> Precisam de AtenÃ§Ã£o
               </h3>
               <div className="space-y-3">
                 {b2bStudents.filter(s => !s.isHighlight).length === 0 ? (
-                  <p className="text-xs text-text-muted">Todos os alunos estão ativos nos últimos 5 dias!</p>
+                  <p className="text-xs text-text-muted">Todos os alunos estÃ£o ativos nos Ãºltimos 5 dias!</p>
                 ) : (
                   b2bStudents.filter(s => !s.isHighlight).map(s => (
                     <div key={s.id} className="flex justify-between items-center text-xs">
@@ -1299,18 +1303,18 @@ export default function Home({
             <div className="bg-surf-1 border border-surf-2 rounded-2xl p-5 relative overflow-hidden md:col-span-2">
               <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
               <h3 className="font-sora font-bold text-sm text-text-primary flex items-center gap-2 mb-4">
-                <Layers className="w-4 h-4 text-amber-500" /> ⏳ Treinos a Vencer
+                <Layers className="w-4 h-4 text-amber-500" /> â³ Treinos a Vencer
               </h3>
               <div className="space-y-3">
                 {expiringWorkoutsComputed.length === 0 ? (
-                  <p className="text-xs text-text-muted">Nenhum treino vencendo nos próximos 5 dias.</p>
+                  <p className="text-xs text-text-muted">Nenhum treino vencendo nos prÃ³ximos 5 dias.</p>
                 ) : (
                   <div className="space-y-2 mt-2">
                     {expiringWorkoutsComputed.map(w => {
-                      const msgDias = w.diffDays === 0 ? "Vence hoje!" : w.diffDays < 0 ? `Venceu há ${Math.abs(w.diffDays)} dia(s)` : `Vence em ${w.diffDays} dia(s)`;
+                      const msgDias = w.diffDays === 0 ? "Vence hoje!" : w.diffDays < 0 ? `Venceu hÃ¡ ${Math.abs(w.diffDays)} dia(s)` : `Vence em ${w.diffDays} dia(s)`;
                       return (
                         <div key={w.id} className="flex items-center justify-between text-sm bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-lg">
-                          <span className="font-medium text-zinc-200">{w.alunoNome || "Aluno"} • <span className="text-zinc-400 font-normal">{w.titulo}</span></span>
+                          <span className="font-medium text-zinc-200">{w.alunoNome || "Aluno"} â€¢ <span className="text-zinc-400 font-normal">{w.titulo}</span></span>
                           <span className="text-amber-400 font-semibold text-xs bg-amber-500/10 px-2 py-1 rounded">{msgDias}</span>
                         </div>
                       );
@@ -1330,12 +1334,12 @@ export default function Home({
               className="bg-surf-1 border border-surf-2 p-3.5 sm:p-5 rounded-2xl flex flex-col justify-between hover:bg-surf-2 hover:-translate-y-1 transition-all text-left group"
             >
               <div className="flex justify-between items-center text-text-secondary w-full">
-                <span className="text-[9px] sm:text-xs font-bold uppercase tracking-wider group-hover:text-lime-electric transition-colors">Sessões</span>
+                <span className="text-[9px] sm:text-xs font-bold uppercase tracking-wider group-hover:text-lime-electric transition-colors">SessÃµes</span>
                 <Calendar className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-lime-electric" />
               </div>
               <div className="mt-3">
                 <span className="text-2xl sm:text-3xl font-mono font-bold block">{totalCompletedWorkouts}</span>
-                <span className="text-[9px] sm:text-xs text-text-muted">Ver histórico</span>
+                <span className="text-[9px] sm:text-xs text-text-muted">Ver histÃ³rico</span>
               </div>
             </button>
 
@@ -1382,7 +1386,7 @@ export default function Home({
               </div>
               {trainerLink.phone && (
                 <a
-                  href={`https://wa.me/${trainerLink.phone}?text=Olá professor, estou vendo meu treino no TreinoBase!`}
+                  href={`https://wa.me/${trainerLink.phone}?text=OlÃ¡ professor, estou vendo meu treino no TreinoBase!`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/30 text-[#25D366] text-xs sm:text-sm font-bold py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 relative z-10"
@@ -1395,7 +1399,7 @@ export default function Home({
           ) : (
             <div className="bg-surf-1 border border-surf-2 p-5 sm:p-6 rounded-2xl flex items-center justify-between gap-4">
               <div className="space-y-1 flex-1">
-                <span className="text-[9px] sm:text-xs font-extrabold text-lime-electric tracking-widest block uppercase">Vínculo com Treinador</span>
+                <span className="text-[9px] sm:text-xs font-extrabold text-lime-electric tracking-widest block uppercase">VÃ­nculo com Treinador</span>
                 <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
                   Seu personal pode prescrever seus treinos em tempo real. Solicite o link de convite.
                 </p>
@@ -1471,7 +1475,7 @@ export default function Home({
                   onChange={(e) => setSelectedFilterStudent(e.target.value)}
                   className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500/50"
                 >
-                  <option value="all">👤 Todos os Alunos</option>
+                  <option value="all">ðŸ‘¤ Todos os Alunos</option>
                   {b2bStudents.map(s => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
@@ -1537,7 +1541,7 @@ export default function Home({
                   <EmptyState 
                     icon={Dumbbell}
                     title="Nenhum treino encontrado"
-                    description={user.role === 'aluno' ? "Seu personal ainda não prescreveu nenhum treino para você." : activeWorkoutTab === 'biblioteca' ? "Sua biblioteca de modelos está vazia." : "Nenhum treino prescrito encontrado."}
+                    description={user.role === 'aluno' ? "Seu personal ainda nÃ£o prescreveu nenhum treino para vocÃª." : activeWorkoutTab === 'biblioteca' ? "Sua biblioteca de modelos estÃ¡ vazia." : "Nenhum treino prescrito encontrado."}
                   />
                   {(user.role === 'personal') && (
                     <button 
@@ -1589,11 +1593,11 @@ export default function Home({
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {workout.aluno_id ? (
                           <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
-                            👤 {b2bStudents.find(s => s.id === workout.aluno_id)?.name || 'Aluno'}
+                            ðŸ‘¤ {b2bStudents.find(s => s.id === workout.aluno_id)?.name || 'Aluno'}
                           </span>
                         ) : (
                           <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20">
-                            📁 Modelo de Biblioteca
+                            ðŸ“ Modelo de Biblioteca
                           </span>
                         )}
                         
@@ -1624,7 +1628,7 @@ export default function Home({
                         >
                           {confirmDeleteId === workout.id ? (
                             <>
-                              <span className="text-[10px] font-bold uppercase tracking-wider">Confirmar Exclusão?</span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider">Confirmar ExclusÃ£o?</span>
                             </>
                           ) : (
                             <Trash className="w-3.5 h-3.5" />
@@ -1635,13 +1639,13 @@ export default function Home({
                   </div>
 
                   <p className="text-xs text-zinc-500 line-clamp-2 my-3 flex-1 font-medium pr-1">
-                    {workout.description || (workout as any).descricao || 'Sem descrição adicional.'}
+                    {workout.description || (workout as any).descricao || 'Sem descriÃ§Ã£o adicional.'}
                   </p>
 
                   <div className="flex items-center justify-between pt-3 border-t border-zinc-800/50 mt-auto">
                     <div className="flex flex-col gap-0.5">
                       <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
-                        {totalBlocks} Divisões • {totalExs} Exs
+                        {totalBlocks} DivisÃµes â€¢ {totalExs} Exs
                       </span>
                       <span className="text-[9px] font-mono text-zinc-600">
                         Criado em: {dtCreated.toLocaleDateString('pt-BR')}
@@ -1703,7 +1707,7 @@ export default function Home({
 
       {/* HISTORIC ACTIVITIES LOGS */}
       <div className="space-y-4">
-        <h2 className="font-sora font-extrabold text-base sm:text-lg text-text-primary">Sessões Recentes</h2>
+        <h2 className="font-sora font-extrabold text-base sm:text-lg text-text-primary">SessÃµes Recentes</h2>
 
         <div className="space-y-3">
           {isLoading ? (
@@ -1716,8 +1720,8 @@ export default function Home({
             b2bRecentSessions.length === 0 ? (
               <EmptyState 
                 icon={Award}
-                title="Nenhuma sessão registrada"
-                description="Seus alunos ainda não registraram nenhum treino."
+                title="Nenhuma sessÃ£o registrada"
+                description="Seus alunos ainda nÃ£o registraram nenhum treino."
               />
             ) : (
               b2bRecentSessions.map(session => (
@@ -1725,7 +1729,7 @@ export default function Home({
                   <div className="flex-1 space-y-1.5">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-bold text-success bg-success/15 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                        Concluído
+                        ConcluÃ­do
                       </span>
                       <span className="text-[10px] text-text-muted font-mono bg-surf-2 px-2 py-0.5 rounded-full">
                         {new Date(session.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit' })}
@@ -1745,8 +1749,8 @@ export default function Home({
             sessions.length === 0 ? (
               <EmptyState 
                 icon={Award}
-                title="Nenhuma sessão registrada"
-                description="Comece um treino para acumular logs e visualizar seu histórico aqui!"
+                title="Nenhuma sessÃ£o registrada"
+                description="Comece um treino para acumular logs e visualizar seu histÃ³rico aqui!"
               />
             ) : (
               [...sessions].reverse().slice(0, 10).map(session => {
@@ -1774,7 +1778,7 @@ export default function Home({
                       <div className="flex-1 space-y-1.5">
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-bold text-success bg-success/15 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            Concluído
+                            ConcluÃ­do
                           </span>
                           <span className="text-[10px] text-text-muted font-mono bg-surf-2 px-2 py-0.5 rounded-full">
                             {session.date}
@@ -1805,9 +1809,9 @@ export default function Home({
                                     <div className="grid grid-cols-2 gap-2">
                                       {exerciseItem.sets.map((set, sIdx) => (
                                         <div key={set.id} className={`text-[10px] flex justify-between px-2 py-1.5 rounded-lg ${set.completed ? 'bg-success/10 text-success' : 'bg-surf-2 text-text-muted'}`}>
-                                          <span className="font-bold">Série {set.setNumber}</span>
+                                          <span className="font-bold">SÃ©rie {set.setNumber}</span>
                                           <span className="font-mono">
-                                            {set.completed ? `${set.executedWeight}kg x ${set.executedReps}` : 'Não feita'}
+                                            {set.completed ? `${set.executedWeight}kg x ${set.executedReps}` : 'NÃ£o feita'}
                                           </span>
                                         </div>
                                       ))}
@@ -1831,7 +1835,7 @@ export default function Home({
       {isCalendarOpen && (
         <CalendarModal sessions={sessions} onClose={() => setIsCalendarOpen(false)} />
       )}
-      {/* MODAL CRIAR NOVO MODELO (CONSTRUTOR DINÂMICO) */}
+      {/* MODAL CRIAR NOVO MODELO (CONSTRUTOR DINÃ‚MICO) */}
       {isCreatingModel && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
@@ -1851,28 +1855,28 @@ export default function Home({
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Título da Ficha</label>
+                    <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">TÃ­tulo da Ficha</label>
                     <input 
                       type="text" 
                       value={newModelData.title}
                       onChange={e => setNewModelData({...newModelData, title: e.target.value})}
-                      placeholder="Ex: Hipertrofia & Força - Fase 1"
+                      placeholder="Ex: Hipertrofia & ForÃ§a - Fase 1"
                       className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
                     />
                   </div>
                   
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Para quem é este treino?</label>
+                    <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Para quem Ã© este treino?</label>
                     <select 
                       value={newModelData.targetStudent}
                       onChange={e => setNewModelData({...newModelData, targetStudent: e.target.value})}
                       className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
                     >
-                      <option value="">📁 Salvar na Biblioteca de Modelos (Reutilizável)</option>
+                      <option value="">ðŸ“ Salvar na Biblioteca de Modelos (ReutilizÃ¡vel)</option>
                       {b2bStudents.length > 0 && (
                         <optgroup label="Meus Alunos">
                           {b2bStudents.map(student => (
-                            <option key={student.id} value={student.id}>👤 Aluno: {student.name}</option>
+                            <option key={student.id} value={student.id}>ðŸ‘¤ Aluno: {student.name}</option>
                           ))}
                         </optgroup>
                       )}
@@ -1882,11 +1886,11 @@ export default function Home({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Descrição / Observação Geral (Opcional)</label>
+                    <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">DescriÃ§Ã£o / ObservaÃ§Ã£o Geral (Opcional)</label>
                     <textarea 
                       value={newModelData.description}
                       onChange={e => setNewModelData({...newModelData, description: e.target.value})}
-                      placeholder="Ex: Foco em hipertrofia com progressão de carga"
+                      placeholder="Ex: Foco em hipertrofia com progressÃ£o de carga"
                       rows={1}
                       className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all resize-none"
                     />
@@ -1900,7 +1904,7 @@ export default function Home({
                       className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
                     >
                       <option value="2">2 semanas</option>
-                      <option value="4">4 semanas (1 mês)</option>
+                      <option value="4">4 semanas (1 mÃªs)</option>
                       <option value="6">6 semanas</option>
                       <option value="8">8 semanas (2 meses)</option>
                       <option value="none">Sem validade fixa</option>
@@ -1931,7 +1935,7 @@ export default function Home({
                     onClick={handleAddDivisao}
                     className="px-4 py-2.5 text-xs font-bold text-zinc-500 hover:text-emerald-400 transition-colors flex items-center gap-1 mt-0.5"
                   >
-                    <Plus className="w-4 h-4" /> Nova Divisão
+                    <Plus className="w-4 h-4" /> Nova DivisÃ£o
                   </button>
                 </div>
 
@@ -1948,7 +1952,7 @@ export default function Home({
                         />
                         <div className="flex-1 border-b border-zinc-800/50"></div>
                         <button onClick={() => handleRemoveDivisao(divisao.id)} className="text-zinc-500 hover:text-red-400 px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-colors">
-                          <Trash2 className="w-3.5 h-3.5" /> Excluir Divisão
+                          <Trash2 className="w-3.5 h-3.5" /> Excluir DivisÃ£o
                         </button>
                       </div>
 
@@ -1965,14 +1969,14 @@ export default function Home({
                                 )}
                                 <div className="grid grid-cols-12 gap-2 items-center">
                                   <div className="col-span-12 sm:col-span-3">
-                                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1 block">Exercício</label>
+                                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1 block">ExercÃ­cio</label>
                                     <input type="text" placeholder="Supino Reto" value={item.exercicio} onChange={(e) => handleUpdateItem(divisao.id, item.id, 'exercicio', e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded text-xs text-white px-2 py-2 focus:border-emerald-500/50 focus:outline-none" />
                                   </div>
                                   
                                   {item.metodo?.arquetipo !== 'piramide' && (
                                     <>
                                       <div className="col-span-6 sm:col-span-2">
-                                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1 block">Séries</label>
+                                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1 block">SÃ©ries</label>
                                         <input type="text" placeholder="3-4" value={item.series} onChange={(e) => handleUpdateItem(divisao.id, item.id, 'series', e.target.value)} disabled={item.metodo?.tipo === 'GVT' || item.metodo?.tipo === 'FST-7'} className="w-full bg-zinc-900 border border-zinc-800 rounded text-xs text-center text-white px-2 py-2 focus:border-emerald-500/50 focus:outline-none disabled:opacity-50" />
                                       </div>
                                       <div className="col-span-6 sm:col-span-2">
@@ -1987,19 +1991,19 @@ export default function Home({
                                     <input type="text" placeholder="60s" value={item.descanso} onChange={(e) => handleUpdateItem(divisao.id, item.id, 'descanso', e.target.value)} onBlur={() => handleUpdateItem(divisao.id, item.id, 'descanso', formatarDescanso(item.descanso))} className="w-full bg-zinc-900 border border-zinc-800 rounded text-[11px] text-white px-2 py-1.5 focus:border-emerald-500/50 focus:outline-none" />
                                   </div>
                                   <div className={`col-span-6 ${item.metodo?.arquetipo === 'piramide' ? 'sm:col-span-4' : 'sm:col-span-2'}`}>
-                                    <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider mb-1 flex items-center gap-1"><Zap className="w-3 h-3"/> Método</label>
+                                    <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider mb-1 flex items-center gap-1"><Zap className="w-3 h-3"/> MÃ©todo</label>
                                     <select value={item.metodo?.tipo || 'Normal'} onChange={(e) => handleUpdateItem(divisao.id, item.id, 'metodo', e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded text-[10px] text-zinc-300 px-1 py-2 focus:border-emerald-500/50 focus:outline-none truncate">
                                       <option value="Normal">Normal</option>
                                       <optgroup label="Intensidade">
                                         <option value="Drop-set">Drop-set</option>
                                         <option value="Rest-pause">Rest-pause</option>
-                                        <option value="Exaustão">Até a Falha</option>
+                                        <option value="ExaustÃ£o">AtÃ© a Falha</option>
                                         <option value="Parciais">Reps Parciais</option>
-                                        <option value="Forçada">Rep Forçada</option>
+                                        <option value="ForÃ§ada">Rep ForÃ§ada</option>
                                       </optgroup>
-                                      <optgroup label="Tensão">
-                                        <option value="Isométrico">Isométrico</option>
-                                        <option value="Negativo">Negativo (Excêntrico)</option>
+                                      <optgroup label="TensÃ£o">
+                                        <option value="IsomÃ©trico">IsomÃ©trico</option>
+                                        <option value="Negativo">Negativo (ExcÃªntrico)</option>
                                         <option value="Super Slow">Super Slow</option>
                                       </optgroup>
                                       <optgroup label="Sistemas">
@@ -2007,9 +2011,9 @@ export default function Home({
                                         <option value="FST-7">FST-7</option>
                                         <option value="Set 21">Set 21</option>
                                       </optgroup>
-                                      <optgroup label="Pirâmides">
-                                        <option value="Pirâmide Crescente">Crescente</option>
-                                        <option value="Pirâmide Decrescente">Decrescente</option>
+                                      <optgroup label="PirÃ¢mides">
+                                        <option value="PirÃ¢mide Crescente">Crescente</option>
+                                        <option value="PirÃ¢mide Decrescente">Decrescente</option>
                                       </optgroup>
                                     </select>
                                   </div>
@@ -2020,7 +2024,7 @@ export default function Home({
                                   </div>
                                 </div>
 
-                                {/* ARQUÉTIPOS MECÂNICOS CONDICIONAIS */}
+                                {/* ARQUÃ‰TIPOS MECÃ‚NICOS CONDICIONAIS */}
                                 {item.metodo?.tipo === 'Drop-set' && (
                                   <div className="mt-2 bg-zinc-900/50 border border-zinc-800/80 p-2 rounded-lg flex items-center gap-2">
                                     <span className="text-[10px] text-zinc-400 font-bold uppercase">Qtd. de Drops:</span>
@@ -2037,9 +2041,9 @@ export default function Home({
                                   </div>
                                 )}
 
-                                {['Isométrico', 'Negativo', 'Super Slow'].includes(item.metodo?.tipo) && (
+                                {['IsomÃ©trico', 'Negativo', 'Super Slow'].includes(item.metodo?.tipo) && (
                                   <div className="mt-2 bg-zinc-900/50 border border-zinc-800/80 p-2 rounded-lg flex items-center gap-2">
-                                    <span className="text-[10px] text-zinc-400 font-bold uppercase">Cadência:</span>
+                                    <span className="text-[10px] text-zinc-400 font-bold uppercase">CadÃªncia:</span>
                                     <input type="text" placeholder="Ex: 4020, 3s..." value={item.metodo.config?.cadencia || ''} onChange={(e) => handleUpdateItemMetodoConfig(divisao.id, item.id, 'cadencia', e.target.value)} className="bg-zinc-800 text-xs text-white rounded px-2 py-1 w-32 border border-zinc-700 outline-none" />
                                   </div>
                                 )}
@@ -2047,20 +2051,20 @@ export default function Home({
                                 {item.metodo?.arquetipo === 'piramide' && (
                                   <div className="mt-2 bg-zinc-900/50 border border-zinc-800/80 p-3 rounded-lg">
                                     <div className="flex items-center justify-between mb-2">
-                                      <span className="text-xs text-emerald-400 font-bold uppercase flex items-center gap-1"><Zap className="w-3 h-3" /> Setup da Pirâmide</span>
+                                      <span className="text-xs text-emerald-400 font-bold uppercase flex items-center gap-1"><Zap className="w-3 h-3" /> Setup da PirÃ¢mide</span>
                                       <button onClick={() => {
                                         const currentSetup = item.metodo.config?.series_setup || [];
                                         handleUpdateItemMetodoConfig(divisao.id, item.id, 'series_setup', [...currentSetup, { reps: '', carga: 'Moderada' }]);
-                                      }} className="text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-1 rounded transition-colors">+ Adicionar Série</button>
+                                      }} className="text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-1 rounded transition-colors">+ Adicionar SÃ©rie</button>
                                     </div>
                                     
                                     {!item.metodo.config?.series_setup || item.metodo.config.series_setup.length === 0 ? (
-                                      <div className="text-[10px] text-zinc-500 italic text-center py-2">Adicione séries para configurar a pirâmide.</div>
+                                      <div className="text-[10px] text-zinc-500 italic text-center py-2">Adicione sÃ©ries para configurar a pirÃ¢mide.</div>
                                     ) : (
                                       <div className="space-y-2">
                                         {item.metodo.config.series_setup.map((s: any, idx: number) => (
                                           <div key={idx} className="flex items-center gap-2">
-                                            <span className="text-[10px] text-zinc-500 font-bold w-12">Série {idx + 1}</span>
+                                            <span className="text-[10px] text-zinc-500 font-bold w-12">SÃ©rie {idx + 1}</span>
                                             <input type="text" placeholder="Reps (Ex: 15)" value={s.reps} onChange={(e) => {
                                               const newSetup = [...item.metodo.config.series_setup];
                                               newSetup[idx].reps = e.target.value;
@@ -2074,7 +2078,7 @@ export default function Home({
                                               <option value="Leve">Carga Leve</option>
                                               <option value="Moderada">Carga Moderada</option>
                                               <option value="Pesada">Carga Pesada</option>
-                                              <option value="Máxima">Carga Máxima</option>
+                                              <option value="MÃ¡xima">Carga MÃ¡xima</option>
                                             </select>
                                             <button onClick={() => {
                                               const newSetup = item.metodo.config.series_setup.filter((_:any, i:number) => i !== idx);
@@ -2089,7 +2093,7 @@ export default function Home({
                                 
                                 <div className="mt-2 grid grid-cols-12 gap-2">
                                   <div className="col-span-12">
-                                    <input type="text" placeholder="Anotações / Instruções Específicas..." value={item.obs} onChange={(e) => handleUpdateItem(divisao.id, item.id, 'obs', e.target.value)} className="w-full bg-zinc-900/50 border border-zinc-800/50 rounded text-[10px] text-zinc-400 px-2 py-1.5 focus:border-emerald-500/50 focus:outline-none" />
+                                    <input type="text" placeholder="AnotaÃ§Ãµes / InstruÃ§Ãµes EspecÃ­ficas..." value={item.obs} onChange={(e) => handleUpdateItem(divisao.id, item.id, 'obs', e.target.value)} className="w-full bg-zinc-900/50 border border-zinc-800/50 rounded text-[10px] text-zinc-400 px-2 py-1.5 focus:border-emerald-500/50 focus:outline-none" />
                                   </div>
                                 </div>
                               </div>
@@ -2107,9 +2111,9 @@ export default function Home({
                                     >
                                       <option value="Bi-set">Bi-set</option>
                                       <option value="Tri-set">Tri-set</option>
-                                      <option value="Super Série">Super Série</option>
+                                      <option value="Super SÃ©rie">Super SÃ©rie</option>
                                       <option value="Agonista/Antagonista">Agonista / Antagonista</option>
-                                      <option value="Pré-exaustão">Pré-exaustão</option>
+                                      <option value="PrÃ©-exaustÃ£o">PrÃ©-exaustÃ£o</option>
                                       <option value="Circuito">Circuito</option>
                                     </select>
                                     </div>
@@ -2123,31 +2127,31 @@ export default function Home({
                                       </button>
                                     </div>
                                   </div>
-                                  {item.subtipo === 'Pré-exaustão' && (
+                                  {item.subtipo === 'PrÃ©-exaustÃ£o' && (
                                     <div className="bg-amber-500/10 text-amber-500 px-4 py-1.5 text-[10px] font-bold text-center uppercase tracking-wider border-b border-amber-500/20">
-                                      Atenção: Ordene do Isolado para o Composto
+                                      AtenÃ§Ã£o: Ordene do Isolado para o Composto
                                     </div>
                                   )}
                                 
                                 <div className="p-2 space-y-1">
                                   {/* Headers */}
                                   <div className="grid grid-cols-12 gap-2 px-2 text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
-                                    <div className="col-span-5">Exercício</div>
-                                    <div className="col-span-2 text-center">Séries</div>
+                                    <div className="col-span-5">ExercÃ­cio</div>
+                                    <div className="col-span-2 text-center">SÃ©ries</div>
                                     <div className="col-span-2 text-center">Reps</div>
-                                    <div className="col-span-3 text-center">Método</div>
+                                    <div className="col-span-3 text-center">MÃ©todo</div>
                                   </div>
                                   
                                   {item.exercicios?.map((subEx: any) => (
                                     <div key={subEx.id} className="bg-zinc-900/50 p-2 rounded border border-zinc-800 relative">
                                       <div className="grid grid-cols-12 gap-2 items-center">
                                         <div className="col-span-5">
-                                          <input type="text" placeholder="Exercício" value={subEx.exercicio} onChange={(e) => handleUpdateSubExercicio(divisao.id, item.id, subEx.id, 'exercicio', e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded text-[11px] text-white px-2 py-1.5 focus:border-emerald-500/50 focus:outline-none" />
+                                          <input type="text" placeholder="ExercÃ­cio" value={subEx.exercicio} onChange={(e) => handleUpdateSubExercicio(divisao.id, item.id, subEx.id, 'exercicio', e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded text-[11px] text-white px-2 py-1.5 focus:border-emerald-500/50 focus:outline-none" />
                                         </div>
                                         {subEx.metodo?.arquetipo !== 'piramide' ? (
                                           <>
                                             <div className="col-span-2">
-                                              <input type="text" placeholder="Séries" value={subEx.series} onChange={(e) => handleUpdateSubExercicio(divisao.id, item.id, subEx.id, 'series', e.target.value)} disabled={subEx.metodo?.tipo === 'GVT' || subEx.metodo?.tipo === 'FST-7'} className="w-full bg-zinc-900 border border-zinc-800 rounded text-[11px] text-center text-white px-2 py-1.5 focus:border-emerald-500/50 focus:outline-none disabled:opacity-50" />
+                                              <input type="text" placeholder="SÃ©ries" value={subEx.series} onChange={(e) => handleUpdateSubExercicio(divisao.id, item.id, subEx.id, 'series', e.target.value)} disabled={subEx.metodo?.tipo === 'GVT' || subEx.metodo?.tipo === 'FST-7'} className="w-full bg-zinc-900 border border-zinc-800 rounded text-[11px] text-center text-white px-2 py-1.5 focus:border-emerald-500/50 focus:outline-none disabled:opacity-50" />
                                             </div>
                                             <div className="col-span-2">
                                               <input type="text" placeholder="Reps" value={subEx.reps} onChange={(e) => handleUpdateSubExercicio(divisao.id, item.id, subEx.id, 'reps', e.target.value)} disabled={subEx.metodo?.tipo === 'GVT' || subEx.metodo?.tipo === 'Set 21'} className="w-full bg-zinc-900 border border-zinc-800 rounded text-[11px] text-center text-white px-2 py-1.5 focus:border-emerald-500/50 focus:outline-none disabled:opacity-50" />
@@ -2155,7 +2159,7 @@ export default function Home({
                                           </>
                                         ) : (
                                           <div className="col-span-4 flex items-center justify-center">
-                                            <span className="text-[9px] text-emerald-500 font-bold bg-emerald-500/10 px-2 py-1 rounded">Pirâmide Ativa</span>
+                                            <span className="text-[9px] text-emerald-500 font-bold bg-emerald-500/10 px-2 py-1 rounded">PirÃ¢mide Ativa</span>
                                           </div>
                                         )}
                                         <div className="col-span-2 relative">
@@ -2163,11 +2167,11 @@ export default function Home({
                                             <option value="Normal">Normal</option>
                                             <option value="Drop-set">Drop-set</option>
                                             <option value="Rest-pause">Rest-pause</option>
-                                            <option value="Exaustão">Até a Falha</option>
+                                            <option value="ExaustÃ£o">AtÃ© a Falha</option>
                                             <option value="Parciais">Reps Parciais</option>
-                                            <option value="Forçada">Rep Forçada</option>
-                                            <option value="Isométrico">Isométrico</option>
-                                            <option value="Negativo">Negativo (Excêntrico)</option>
+                                            <option value="ForÃ§ada">Rep ForÃ§ada</option>
+                                            <option value="IsomÃ©trico">IsomÃ©trico</option>
+                                            <option value="Negativo">Negativo (ExcÃªntrico)</option>
                                             <option value="Super Slow">Super Slow</option>
                                             <option value="GVT">GVT (10x10)</option>
                                             <option value="FST-7">FST-7</option>
@@ -2182,7 +2186,7 @@ export default function Home({
                                         </div>
                                       </div>
 
-                                      {/* ARQUÉTIPOS MECÂNICOS CONDICIONAIS */}
+                                      {/* ARQUÃ‰TIPOS MECÃ‚NICOS CONDICIONAIS */}
                                       {subEx.metodo?.tipo === 'Drop-set' && (
                                         <div className="mt-2 bg-zinc-900/50 border border-zinc-800/80 p-2 rounded-lg flex items-center gap-2">
                                           <span className="text-[10px] text-zinc-400 font-bold uppercase">Qtd. de Drops:</span>
@@ -2199,9 +2203,9 @@ export default function Home({
                                         </div>
                                       )}
 
-                                      {['Isométrico', 'Negativo', 'Super Slow'].includes(subEx.metodo?.tipo) && (
+                                      {['IsomÃ©trico', 'Negativo', 'Super Slow'].includes(subEx.metodo?.tipo) && (
                                         <div className="mt-2 bg-zinc-900/50 border border-zinc-800/80 p-2 rounded-lg flex items-center gap-2">
-                                          <span className="text-[10px] text-zinc-400 font-bold uppercase">Cadência:</span>
+                                          <span className="text-[10px] text-zinc-400 font-bold uppercase">CadÃªncia:</span>
                                           <input type="text" placeholder="Ex: 4020, 3s..." value={subEx.metodo.config?.cadencia || ''} onChange={(e) => handleUpdateSubExercicioMetodoConfig(divisao.id, item.id, subEx.id, 'cadencia', e.target.value)} className="bg-zinc-800 text-xs text-white rounded px-2 py-1 w-32 border border-zinc-700 outline-none" />
                                         </div>
                                       )}
@@ -2209,20 +2213,20 @@ export default function Home({
                                       {subEx.metodo?.arquetipo === 'piramide' && (
                                         <div className="mt-2 bg-zinc-900/50 border border-zinc-800/80 p-3 rounded-lg">
                                           <div className="flex items-center justify-between mb-2">
-                                            <span className="text-xs text-emerald-400 font-bold uppercase flex items-center gap-1"><Zap className="w-3 h-3" /> Setup da Pirâmide</span>
+                                            <span className="text-xs text-emerald-400 font-bold uppercase flex items-center gap-1"><Zap className="w-3 h-3" /> Setup da PirÃ¢mide</span>
                                             <button onClick={() => {
                                               const currentSetup = subEx.metodo.config?.series_setup || [];
                                               handleUpdateSubExercicioMetodoConfig(divisao.id, item.id, subEx.id, 'series_setup', [...currentSetup, { reps: '', carga: 'Moderada' }]);
-                                            }} className="text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-1 rounded transition-colors">+ Adicionar Série</button>
+                                            }} className="text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-1 rounded transition-colors">+ Adicionar SÃ©rie</button>
                                           </div>
                                           
                                           {!subEx.metodo.config?.series_setup || subEx.metodo.config.series_setup.length === 0 ? (
-                                            <div className="text-[10px] text-zinc-500 italic text-center py-2">Adicione séries para configurar a pirâmide.</div>
+                                            <div className="text-[10px] text-zinc-500 italic text-center py-2">Adicione sÃ©ries para configurar a pirÃ¢mide.</div>
                                           ) : (
                                             <div className="space-y-2">
                                               {subEx.metodo.config.series_setup.map((s: any, idx: number) => (
                                                 <div key={idx} className="flex items-center gap-2">
-                                                  <span className="text-[10px] text-zinc-500 font-bold w-12">Série {idx + 1}</span>
+                                                  <span className="text-[10px] text-zinc-500 font-bold w-12">SÃ©rie {idx + 1}</span>
                                                   <input type="text" placeholder="Reps (Ex: 15)" value={s.reps} onChange={(e) => {
                                                     const newSetup = [...subEx.metodo.config.series_setup];
                                                     newSetup[idx].reps = e.target.value;
@@ -2236,7 +2240,7 @@ export default function Home({
                                                     <option value="Leve">Carga Leve</option>
                                                     <option value="Moderada">Carga Moderada</option>
                                                     <option value="Pesada">Carga Pesada</option>
-                                                    <option value="Máxima">Carga Máxima</option>
+                                                    <option value="MÃ¡xima">Carga MÃ¡xima</option>
                                                   </select>
                                                   <button onClick={() => {
                                                     const newSetup = subEx.metodo.config.series_setup.filter((_:any, i:number) => i !== idx);
@@ -2260,7 +2264,7 @@ export default function Home({
                                       onClick={() => handleAddSubExercicio(divisao.id, item.id)}
                                       className="text-[10px] font-bold text-zinc-500 hover:text-emerald-400 transition-colors uppercase tracking-wider w-full text-left pl-2"
                                     >
-                                      + Adicionar Exercício ao Grupo
+                                      + Adicionar ExercÃ­cio ao Grupo
                                     </button>
                                   </div>
                                 </div>
@@ -2276,13 +2280,13 @@ export default function Home({
                           onClick={() => handleAddItem(divisao.id, 'simples')}
                           className="flex-1 text-xs font-bold text-zinc-400 hover:text-white bg-zinc-950 hover:bg-zinc-800 transition-colors flex items-center gap-1 w-full p-2.5 border border-dashed border-zinc-700 hover:border-zinc-600 rounded-lg justify-center shadow-inner"
                         >
-                          <Plus className="w-3.5 h-3.5" /> Adicionar Exercício Normal
+                          <Plus className="w-3.5 h-3.5" /> Adicionar ExercÃ­cio Normal
                         </button>
                         <button
                           onClick={() => handleAddItem(divisao.id, 'grupo')}
                           className="flex-1 text-xs font-bold text-emerald-500 hover:text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10 transition-colors flex items-center gap-1 w-full p-2.5 border border-dashed border-emerald-500/30 hover:border-emerald-500/50 rounded-lg justify-center shadow-inner"
                         >
-                          <Zap className="w-3.5 h-3.5" /> ⚡ Adicionar Grupo / Circuito
+                          <Zap className="w-3.5 h-3.5" /> âš¡ Adicionar Grupo / Circuito
                         </button>
                       </div>
                     </div>
@@ -2290,9 +2294,9 @@ export default function Home({
                   
                   {divisoesArray.length === 0 && (
                     <div className="text-center py-8">
-                      <p className="text-sm text-zinc-500">Nenhuma divisão ativa.</p>
+                      <p className="text-sm text-zinc-500">Nenhuma divisÃ£o ativa.</p>
                       <button onClick={handleAddDivisao} className="mt-2 text-xs font-bold text-emerald-500 hover:text-emerald-400 transition-colors">
-                        Adicionar Divisão A
+                        Adicionar DivisÃ£o A
                       </button>
                     </div>
                   )}
@@ -2341,7 +2345,7 @@ export default function Home({
                   </span>
                   {(selectedWorkoutDetails as any).blocos > 0 && (
                     <span className="text-[10px] px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-500 font-medium">
-                      {(selectedWorkoutDetails as any).blocos} Blocos • {(selectedWorkoutDetails as any).exercicios} Exercícios
+                      {(selectedWorkoutDetails as any).blocos} Blocos â€¢ {(selectedWorkoutDetails as any).exercicios} ExercÃ­cios
                     </span>
                   )}
                 </div>
@@ -2360,31 +2364,31 @@ export default function Home({
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               <div>
-                <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Descrição</h4>
+                <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">DescriÃ§Ã£o</h4>
                 <p className="text-sm text-zinc-300 whitespace-pre-wrap leading-relaxed">
-                  {selectedWorkoutDetails.description || (selectedWorkoutDetails as any).descricao || 'Nenhuma descrição informada para este treino.'}
+                  {selectedWorkoutDetails.description || (selectedWorkoutDetails as any).descricao || 'Nenhuma descriÃ§Ã£o informada para este treino.'}
                 </p>
               </div>
 
-              {/* Informação sobre as divisões */}
+              {/* InformaÃ§Ã£o sobre as divisÃµes */}
               <div className="bg-zinc-900/50 border border-zinc-800/60 rounded-xl p-4 flex flex-col gap-4">
                 <div className="flex items-start gap-3">
                   <Layers className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
                   <div>
                     <h4 className="text-sm font-semibold text-white">Estrutura do Treino</h4>
                     <p className="text-xs text-zinc-400 mt-1">
-                      {(selectedWorkoutDetails as any).blocos || 1} divisões principais englobando um total de {(selectedWorkoutDetails as any).exercicios || 1} exercícios prescritos.
+                      {(selectedWorkoutDetails as any).blocos || 1} divisÃµes principais englobando um total de {(selectedWorkoutDetails as any).exercicios || 1} exercÃ­cios prescritos.
                     </p>
                     {/* Validade se existir */}
                     {(selectedWorkoutDetails as any).validade_semanas && (
                        <p className="text-xs font-bold text-amber-500 mt-2 bg-amber-500/10 w-fit px-2 py-1 rounded">
-                         Validade: {(selectedWorkoutDetails as any).validade_semanas} semanas (até {new Date((selectedWorkoutDetails as any).data_validade).toLocaleDateString()})
+                         Validade: {(selectedWorkoutDetails as any).validade_semanas} semanas (atÃ© {new Date((selectedWorkoutDetails as any).data_validade).toLocaleDateString()})
                        </p>
                     )}
                   </div>
                 </div>
 
-                {/* Renderização da Estrutura */}
+                {/* RenderizaÃ§Ã£o da Estrutura */}
                 {(() => {
                   let parsedDivisoes: any[] = [];
                   try {
@@ -2595,3 +2599,4 @@ export default function Home({
     </div>
   );
 }
+

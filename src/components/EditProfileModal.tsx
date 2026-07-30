@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Loader2 } from 'lucide-react';
 import { User } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../services/supabaseClient';
 
 interface EditProfileModalProps {
   user: User;

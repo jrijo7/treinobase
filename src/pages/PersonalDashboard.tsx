@@ -4,9 +4,9 @@ import {
   Activity, ArrowLeft, RefreshCw, Send, Plus, Sparkles, ExternalLink, Dumbbell, Link, Clock, X, Trash2
 } from 'lucide-react';
 import { Student, User as UserType } from '../types';
-import { supabase } from '../lib/supabase';
-import { EmptyState } from './ui/EmptyState';
-import { Skeleton } from './ui/Skeleton';
+import { supabase } from '../services/supabaseClient';
+import { EmptyState } from '../components/ui/EmptyState';
+import { Skeleton } from '../components/ui/Skeleton';
 
 interface PersonalDashboardProps {
   currentUser: UserType;
@@ -14,11 +14,15 @@ interface PersonalDashboardProps {
   onNavigateToTab?: (tab: string) => void;
 }
 
-export default function PersonalDashboard({ 
-  currentUser,
-  onPrescribeWorkoutToStudent,
-  onNavigateToTab
-}: PersonalDashboardProps) {
+import { useOutletContext, useNavigate } from 'react-router-dom';
+
+export default function PersonalDashboard() {
+  const { 
+    currentUser,
+    onPrescribeWorkoutToStudent,
+  } = useOutletContext<any>();
+  const navigate = useNavigate();
+  const onNavigateToTab = (tab: string) => navigate(tab === 'home' ? '/' : `/${tab}`);
   
   const [students, setStudents] = useState<Student[]>([]);
   const [pendingInvites, setPendingInvites] = useState<any[]>([]);
@@ -39,7 +43,7 @@ export default function PersonalDashboard({
   const fetchDashboardData = async () => {
     setIsLoading(true);
     try {
-      // ETAPA 1: Buscar os IDs dos vínculos onde o personal logado é o responsável
+      // ETAPA 1: Buscar os IDs dos vÃ­nculos onde o personal logado Ã© o responsÃ¡vel
       const { data: vinculos, error: errVinculos } = await supabase
         .from('personal_aluno')
         .select('*')
@@ -50,7 +54,7 @@ export default function PersonalDashboard({
       let activeVinculos = vinculos || [];
 
       // ETAPA 2: FALLBACK (AUTO-HEALING)
-      // Se não encontrou vínculos, vamos procurar na tabela de treinos para ver se o personal tem alunos lá
+      // Se nÃ£o encontrou vÃ­nculos, vamos procurar na tabela de treinos para ver se o personal tem alunos lÃ¡
       if (activeVinculos.length === 0) {
         
         // Busca treinos criados por este personal que tenham um aluno_id vinculado
@@ -61,7 +65,7 @@ export default function PersonalDashboard({
           .not('aluno_id', 'is', null);
           
         if (!errTreinos && treinos && treinos.length > 0) {
-          // Extrai IDs únicos de alunos
+          // Extrai IDs Ãºnicos de alunos
           const uniqueAlunoIds = Array.from(new Set(treinos.map(t => t.aluno_id).filter(Boolean)));
           
           if (uniqueAlunoIds.length > 0) {
@@ -76,7 +80,7 @@ export default function PersonalDashboard({
             // Insere no banco
             await supabase.from('personal_aluno').insert(novosVinculos);
             
-            // Busca os vínculos novamente
+            // Busca os vÃ­nculos novamente
             const { data: vinculosAtualizados } = await supabase
               .from('personal_aluno')
               .select('*')
@@ -89,7 +93,7 @@ export default function PersonalDashboard({
         }
       }
 
-      // Se após o auto-healing ainda estiver vazio, encerramos
+      // Se apÃ³s o auto-healing ainda estiver vazio, encerramos
       if (activeVinculos.length === 0) {
         setStudents([]);
         return;
@@ -106,7 +110,7 @@ export default function PersonalDashboard({
 
       if (errPerfis) {
         console.error('Erro ao buscar perfis (RLS ou falha):', errPerfis);
-        // Mesmo falhando o perfil, podemos mostrar os alunos de forma anônima
+        // Mesmo falhando o perfil, podemos mostrar os alunos de forma anÃ´nima
       }
 
       const perfisData = perfis || [];
@@ -128,7 +132,7 @@ export default function PersonalDashboard({
         };
       });
 
-      // ETAPA 4: Fetch sessoes for adherence (Últimos 30 dias)
+      // ETAPA 4: Fetch sessoes for adherence (Ãšltimos 30 dias)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
@@ -170,7 +174,7 @@ export default function PersonalDashboard({
 
       setStudents(mappedStudents);
 
-      // ETAPA 6: Pendências de Convites
+      // ETAPA 6: PendÃªncias de Convites
       const { data: invites, error: invErr } = await supabase
         .from('trainer_invites')
         .select('*')
@@ -233,9 +237,9 @@ export default function PersonalDashboard({
       setInviteToken(token);
       
       if (type === 'link') {
-        const msg = `Olá! Acesse o TreinoBase e use o meu token exclusivo para nos vincularmos: ${token}`;
+        const msg = `OlÃ¡! Acesse o TreinoBase e use o meu token exclusivo para nos vincularmos: ${token}`;
         navigator.clipboard.writeText(msg);
-        setInviteFeedback('Token gerado e mensagem copiada para área de transferência!');
+        setInviteFeedback('Token gerado e mensagem copiada para Ã¡rea de transferÃªncia!');
       } else {
         setInviteFeedback(`Convite gerado e reservado para ${inviteEmail}!`);
         setInviteEmail('');
@@ -276,7 +280,7 @@ export default function PersonalDashboard({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <span className="text-[10px] sm:text-xs uppercase font-bold tracking-widest text-lime-electric block">PAINEL DO PROFESSOR</span>
-          <h1 className="font-sora font-extrabold text-lg sm:text-2xl text-text-primary">Gestão de Alunos</h1>
+          <h1 className="font-sora font-extrabold text-lg sm:text-2xl text-text-primary">GestÃ£o de Alunos</h1>
         </div>
         
         <button
@@ -295,7 +299,7 @@ export default function PersonalDashboard({
           <span className="text-xl sm:text-3xl font-mono font-bold text-zinc-100 mt-1 block">{isLoading ? '-' : activeStudents}</span>
         </div>
         <div className="bg-zinc-900 border border-zinc-800 p-4 sm:p-5 rounded-2xl">
-          <span className="text-[9px] sm:text-xs text-zinc-400 uppercase font-bold tracking-wider block">Adesão Média</span>
+          <span className="text-[9px] sm:text-xs text-zinc-400 uppercase font-bold tracking-wider block">AdesÃ£o MÃ©dia</span>
           <span className="text-xl sm:text-3xl font-mono font-bold text-lime-500 mt-1 block">{isLoading ? '-' : `${averageAdherence}%`}</span>
         </div>
         <div className="bg-zinc-900 border border-zinc-800 p-4 sm:p-5 rounded-2xl">
@@ -364,7 +368,7 @@ export default function PersonalDashboard({
                         <>
                           <div className="flex items-center gap-2">
                             <Clock className="w-3.5 h-3.5" />
-                            <span>Último treino: {student.lastWorkoutDate ? new Date(student.lastWorkoutDate).toLocaleDateString() : 'Desconhecido'}</span>
+                            <span>Ãšltimo treino: {student.lastWorkoutDate ? new Date(student.lastWorkoutDate).toLocaleDateString() : 'Desconhecido'}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Dumbbell className="w-3.5 h-3.5" />
@@ -372,7 +376,7 @@ export default function PersonalDashboard({
                           </div>
                           <div className="flex items-center gap-2">
                             <Activity className="w-3.5 h-3.5" />
-                            <span>Aderência (30d): {student.adherence}%</span>
+                            <span>AderÃªncia (30d): {student.adherence}%</span>
                           </div>
                         </>
                       ) : (
@@ -396,7 +400,7 @@ export default function PersonalDashboard({
                         }}
                         className="bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700/50 text-zinc-300 text-xs font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all"
                       >
-                         Ver Evolução
+                         Ver EvoluÃ§Ã£o
                       </button>
                       <button className="bg-zinc-800/30 hover:bg-zinc-800 border border-zinc-700/50 text-zinc-400 text-xs p-2 rounded-lg transition-all" title="Editar Perfil">
                         <Sparkles className="w-4 h-4" />
@@ -425,7 +429,7 @@ export default function PersonalDashboard({
                     <th className="px-5 py-4 font-bold">Token</th>
                     <th className="px-5 py-4 font-bold hidden sm:table-cell">E-mail Restrito</th>
                     <th className="px-5 py-4 font-bold hidden md:table-cell">Criado em</th>
-                    <th className="px-5 py-4 font-bold text-right">Ação</th>
+                    <th className="px-5 py-4 font-bold text-right">AÃ§Ã£o</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surf-2">
@@ -466,17 +470,17 @@ export default function PersonalDashboard({
             </div>
 
             <p className="text-sm text-text-secondary leading-relaxed">
-              Gere um token único (Single-Use) para conectar a conta do seu aluno à sua carteira de clientes.
+              Gere um token Ãºnico (Single-Use) para conectar a conta do seu aluno Ã  sua carteira de clientes.
             </p>
 
             <div className="space-y-5">
-              {/* Opção 1: Link Direto */}
+              {/* OpÃ§Ã£o 1: Link Direto */}
               <div className="bg-bg-dark border border-surf-2 p-4 rounded-2xl space-y-3">
                 <div className="flex items-center gap-2 text-sm font-bold text-text-primary">
                   <Link className="w-4 h-4 text-lime-electric" />
-                  Opção 1: Geração Rápida (WhatsApp)
+                  OpÃ§Ã£o 1: GeraÃ§Ã£o RÃ¡pida (WhatsApp)
                 </div>
-                <p className="text-xs text-text-muted">Cria um token instantâneo para copiar e colar para qualquer aluno.</p>
+                <p className="text-xs text-text-muted">Cria um token instantÃ¢neo para copiar e colar para qualquer aluno.</p>
                 <button
                   onClick={() => generateInvite('link')}
                   disabled={isGenerating}
@@ -486,13 +490,13 @@ export default function PersonalDashboard({
                 </button>
               </div>
 
-              {/* Opção 2: Por Email */}
+              {/* OpÃ§Ã£o 2: Por Email */}
               <form onSubmit={(e) => generateInvite('email', e)} className="bg-bg-dark border border-surf-2 p-4 rounded-2xl space-y-3">
                 <div className="flex items-center gap-2 text-sm font-bold text-text-primary">
                   <Send className="w-4 h-4 text-teal-data" />
-                  Opção 2: Restringir por E-mail
+                  OpÃ§Ã£o 2: Restringir por E-mail
                 </div>
-                <p className="text-xs text-text-muted">O token só poderá ser usado pelo aluno dono deste e-mail exato.</p>
+                <p className="text-xs text-text-muted">O token sÃ³ poderÃ¡ ser usado pelo aluno dono deste e-mail exato.</p>
                 <div className="flex gap-2">
                   <input
                     type="email"
@@ -523,7 +527,7 @@ export default function PersonalDashboard({
         </div>
       )}
 
-    {/* PRONTUÁRIO DRAWER */}
+    {/* PRONTUÃRIO DRAWER */}
     {drawerStudent && (
       <div className="fixed inset-0 z-50 flex justify-end">
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDrawerStudent(null)}></div>
@@ -557,7 +561,7 @@ export default function PersonalDashboard({
               <EmptyState 
                 icon={Dumbbell}
                 title="Nenhum treino prescrito"
-                description="Este aluno ainda não possui treinos ativos."
+                description="Este aluno ainda nÃ£o possui treinos ativos."
               />
             ) : (
               drawerWorkouts.map(workout => (
@@ -568,12 +572,12 @@ export default function PersonalDashboard({
                     </h3>
                   </div>
                   <p className="text-xs text-zinc-400 line-clamp-2">
-                    {workout.descricao || 'Sem descrição.'}
+                    {workout.descricao || 'Sem descriÃ§Ã£o.'}
                   </p>
                   <div className="flex justify-between items-center mt-2 border-t border-zinc-800/50 pt-3">
                     <div className="flex gap-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
                       <span className="bg-zinc-800 px-2 py-1 rounded">{workout.blocos || 1} Blocos</span>
-                      <span className="bg-zinc-800 px-2 py-1 rounded">{workout.exercicios || 1} Exercícios</span>
+                      <span className="bg-zinc-800 px-2 py-1 rounded">{workout.exercicios || 1} ExercÃ­cios</span>
                     </div>
                     <span className="text-[10px] text-zinc-500">
                       {new Date(workout.created_at).toLocaleDateString()}
@@ -603,3 +607,4 @@ export default function PersonalDashboard({
     </div>
   );
 }
+

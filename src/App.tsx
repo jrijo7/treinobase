@@ -7,15 +7,16 @@ import { User, Workout, WorkoutSession, Student } from './types';
 import { INITIAL_WORKOUTS, INITIAL_STUDENTS, getStoredData, setStoredData } from './mockData';
 
 // Component Imports
-import Onboarding from './components/Onboarding';
-import Home from './components/Home';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import Onboarding from './pages/Onboarding';
+import Home from './pages/Home';
 import BlockEditor from './components/BlockEditor';
-import WorkoutExecution from './components/WorkoutExecution';
-import ProgressDashboard from './components/ProgressDashboard';
-import PersonalDashboard from './components/PersonalDashboard';
-import InvitationVincular from './components/InvitationVincular';
+import WorkoutExecution from './pages/WorkoutExecution';
+import ProgressDashboard from './pages/ProgressDashboard';
+import PersonalDashboard from './pages/PersonalDashboard';
+import InvitationVincular from './pages/InvitationVincular';
 import SettingsDropdown from './components/SettingsDropdown';
-import { supabase } from './lib/supabase';
+import { supabase } from './services/supabaseClient';
 
 export default function App() {
   // State variables synchronized with LocalStorage
@@ -36,7 +37,9 @@ export default function App() {
   });
 
   // Navigation states
-  const [activeTab, setActiveTab] = useState<string>('home'); // home, progress, personal, vincular
+  const navigate = useNavigate();
+  const location = useLocation();
+  const activeTab = location.pathname === '/' ? 'home' : location.pathname.substring(1);
   const [currentView, setCurrentView] = useState<'app' | 'editor' | 'execution'>('app');
 
   // Active workout to edit / execute
@@ -111,13 +114,13 @@ export default function App() {
   const handleOnboardingComplete = (user: User) => {
     if (user.role === 'aluno' && !user.personalId) {
       user.personalId = 'personal-mock-123';
-      user.personalName = 'João Profissional';
+      user.personalName = 'JoÃ£o Profissional';
       user.personalPhone = '5511999999999';
       user.personalAvatar = 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&q=80&w=200';
       user.weeklyGoal = 4;
     }
     setCurrentUser(user);
-    setActiveTab('home');
+    navigate('/');
     setCurrentView('app');
   };
 
@@ -129,7 +132,7 @@ export default function App() {
       ...currentUser,
       role: newRole
     });
-    setActiveTab('home');
+    navigate('/');
   };
 
   // Workout Editor handlers
@@ -163,8 +166,7 @@ export default function App() {
 
   // Workout Execution handlers
   const handleStartWorkout = (workout: Workout) => {
-    setExecutingWorkout(workout);
-    setCurrentView('execution');
+    navigate(`/treino/${workout.id}/executar`, { state: { workout } });
   };
 
   const handleFinishWorkoutExecution = (completedSession: WorkoutSession) => {
@@ -192,7 +194,7 @@ export default function App() {
 
     setExecutingWorkout(null);
     setCurrentView('app');
-    setActiveTab('home'); // return to homepage
+    navigate('/'); // return to homepage
   };
 
   // Personal trainer student prescription routing
@@ -201,14 +203,14 @@ export default function App() {
     const defaultWorkout: Workout = {
       id: `w-${Date.now()}`,
       name: `Treino Prescrito p/ ${student.name.split(' ')[0]}`,
-      description: `Periodização de treino montada pelo Prof. ${currentUser?.name.split(' ')[0]}.`,
+      description: `PeriodizaÃ§Ã£o de treino montada pelo Prof. ${currentUser?.name.split(' ')[0]}.`,
       creatorId: currentUser?.id || 'personal-1',
       createdAt: new Date().toISOString(),
       blocks: [
         {
           id: `b-${Date.now()}`,
           type: 'straight',
-          name: 'Bloco 1 - Base de Força',
+          name: 'Bloco 1 - Base de ForÃ§a',
           exercises: []
         }
       ]
@@ -252,7 +254,7 @@ export default function App() {
     setWorkouts(INITIAL_WORKOUTS);
     setSessions([]);
     setStudents(INITIAL_STUDENTS);
-    setActiveTab('home');
+    navigate('/');
     setCurrentView('app');
   };
 
@@ -274,17 +276,6 @@ export default function App() {
             setCurrentView('app');
           }}
         />
-      ) : currentView === 'execution' && executingWorkout ? (
-        <WorkoutExecution 
-          workout={executingWorkout}
-          user={currentUser}
-          onFinish={handleFinishWorkoutExecution}
-          onCancel={() => {
-            setExecutingWorkout(null);
-            setCurrentView('app');
-          }}
-          onMinimize={() => setCurrentView('app')}
-        />
       ) : (
         /* STANDARD APP TAB SHELL WITH RESPONSIVE TOP BAR AND MOBILE BOTTOM FOOTER */
         <>
@@ -301,7 +292,7 @@ export default function App() {
               {/* Desktop/Tablet Main Tab Navigation (Hidden on Mobile) */}
               <nav className="hidden md:flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-1">
                 <button
-                  onClick={() => setActiveTab('home')}
+                  onClick={() => navigate('/')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold font-sora transition-all ${
                     activeTab === 'home' 
                       ? 'bg-emerald-500 text-zinc-950 font-bold shadow-lg shadow-emerald-500/10' 
@@ -309,11 +300,11 @@ export default function App() {
                   }`}
                 >
                   <HomeIcon className="w-4 h-4 stroke-[2]" />
-                  <span>Início</span>
+                  <span>InÃ­cio</span>
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('progress')}
+                  onClick={() => navigate('/progress')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold font-sora transition-all ${
                     activeTab === 'progress' 
                       ? 'bg-emerald-500 text-zinc-950 font-bold shadow-lg shadow-emerald-500/10' 
@@ -321,12 +312,12 @@ export default function App() {
                   }`}
                 >
                   <TrendingUp className="w-4 h-4 stroke-[2]" />
-                  <span>Evolução</span>
+                  <span>EvoluÃ§Ã£o</span>
                 </button>
 
                 {currentUser.role === 'personal' ? (
                   <button
-                    onClick={() => setActiveTab('personal')}
+                    onClick={() => navigate('/personal')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold font-sora transition-all ${
                       activeTab === 'personal' 
                         ? 'bg-emerald-500 text-zinc-950 font-bold shadow-lg shadow-emerald-500/10' 
@@ -338,7 +329,7 @@ export default function App() {
                   </button>
                 ) : (
                   <button
-                    onClick={() => setActiveTab('vincular')}
+                    onClick={() => navigate('/vincular')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold font-sora transition-all ${
                       activeTab === 'vincular' 
                         ? 'bg-emerald-500 text-zinc-950 font-bold shadow-lg shadow-emerald-500/10' 
@@ -361,7 +352,7 @@ export default function App() {
                     title="Alternar entre Aluno e Treinador"
                   >
                   <RefreshCw className="w-3.5 h-3.5 text-lime-500" />
-                  <span>{currentUser.role === 'personal' ? 'Visão Prof.' : 'Visão Atleta'}</span>
+                  <span>{currentUser.role === 'personal' ? 'VisÃ£o Prof.' : 'VisÃ£o Atleta'}</span>
                 </button>
               )}
 
@@ -376,39 +367,20 @@ export default function App() {
 
           {/* Main scrollable body */}
           <main className="flex-1 w-full overflow-y-auto">
-            {activeTab === 'home' && (
-              <Home 
-                user={currentUser}
-                workouts={workouts}
-                sessions={sessions}
-                students={students}
-                activeWorkoutId={executingWorkout?.id}
-                onStartWorkout={handleStartWorkout}
-                onCreateNewWorkout={handleOpenEditorNew}
-                onDeleteWorkout={handleDeleteWorkout}
-                onNavigateToTab={(tab) => setActiveTab(tab)}
-                onUpdateUser={(updatedUser) => setCurrentUser(updatedUser)}
-              />
-            )}
-
-            {activeTab === 'progress' && (
-              <ProgressDashboard currentUser={currentUser} />
-            )}
-
-            {activeTab === 'personal' && currentUser.role === 'personal' && (
-              <PersonalDashboard 
-                currentUser={currentUser}
-                onPrescribeWorkoutToStudent={handlePrescribeToStudent}
-                onNavigateToTab={(tab) => setActiveTab(tab)}
-              />
-            )}
-
-            {activeTab === 'vincular' && currentUser.role === 'aluno' && (
-              <InvitationVincular 
-                currentUser={currentUser}
-                onLinkTrainer={handleLinkTrainer}
-              />
-            )}
+            <Outlet context={{
+              user: currentUser,
+              currentUser,
+              workouts,
+              sessions,
+              students,
+              activeWorkoutId: executingWorkout?.id,
+              onStartWorkout: handleStartWorkout,
+              onCreateNewWorkout: handleOpenEditorNew,
+              onDeleteWorkout: handleDeleteWorkout,
+              onUpdateUser: (updatedUser: any) => setCurrentUser(updatedUser),
+              onPrescribeWorkoutToStudent: handlePrescribeToStudent,
+              onLinkTrainer: handleLinkTrainer
+            }} />
           </main>
 
           {/* 2. DYNAMIC MOBILE NAVIGATION FOOTER (Only on Mobile) */}
@@ -417,26 +389,26 @@ export default function App() {
             {/* Home Tab */}
             <button
               id="nav-home-btn"
-              onClick={() => setActiveTab('home')}
+              onClick={() => navigate('/')}
               className={`flex flex-col items-center gap-1.5 py-1 text-center transition-all ${
                 activeTab === 'home' ? 'text-lime-electric' : 'text-text-secondary hover:text-text-primary'
               }`}
             >
               <HomeIcon className="w-5 h-5 stroke-[2]" />
-              <span className="text-[9px] font-bold uppercase tracking-wider font-sora">Início</span>
+              <span className="text-[9px] font-bold uppercase tracking-wider font-sora">InÃ­cio</span>
               {activeTab === 'home' && <span className="w-5 h-0.5 bg-lime-electric rounded-full mt-0.5" />}
             </button>
 
             {/* Progress Tab */}
             <button
               id="nav-progress-btn"
-              onClick={() => setActiveTab('progress')}
+              onClick={() => navigate('/progress')}
               className={`flex flex-col items-center gap-1.5 py-1 text-center transition-all ${
                 activeTab === 'progress' ? 'text-lime-electric' : 'text-text-secondary hover:text-text-primary'
               }`}
             >
               <TrendingUp className="w-5 h-5 stroke-[2]" />
-              <span className="text-[9px] font-bold uppercase tracking-wider font-sora">Evolução</span>
+              <span className="text-[9px] font-bold uppercase tracking-wider font-sora">EvoluÃ§Ã£o</span>
               {activeTab === 'progress' && <span className="w-5 h-0.5 bg-lime-electric rounded-full mt-0.5" />}
             </button>
 
@@ -444,7 +416,7 @@ export default function App() {
             {currentUser.role === 'personal' ? (
               <button
                 id="nav-personal-btn"
-                onClick={() => setActiveTab('personal')}
+                onClick={() => navigate('/personal')}
                 className={`flex flex-col items-center gap-1.5 py-1 text-center transition-all ${
                   activeTab === 'personal' ? 'text-lime-electric' : 'text-text-secondary hover:text-text-primary'
                 }`}
@@ -456,7 +428,7 @@ export default function App() {
             ) : (
               <button
                 id="nav-vincular-btn"
-                onClick={() => setActiveTab('vincular')}
+                onClick={() => navigate('/vincular')}
                 className={`flex flex-col items-center gap-1.5 py-1 text-center transition-all ${
                   activeTab === 'vincular' ? 'text-lime-electric' : 'text-text-secondary hover:text-text-primary'
                 }`}
@@ -473,3 +445,5 @@ export default function App() {
     </div>
   );
 }
+
+

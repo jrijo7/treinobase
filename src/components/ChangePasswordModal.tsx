@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Loader2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../services/supabaseClient';
 
 interface ChangePasswordModalProps {
   onClose: () => void;

@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { 
   Play, Check, Clock, X, RotateCcw, Volume2, VolumeX, AlertCircle,
   Plus, Minus, SkipForward, ArrowLeft, Trophy, Sparkles, ChevronRight, CheckSquare, ChevronDown, CheckCircle2
 } from 'lucide-react';
 import { User } from '../types';
-import { supabase } from '../lib/supabase';
-import { EmptyState } from './ui/EmptyState';
+import { supabase } from '../services/supabaseClient';
+import { EmptyState } from '../components/ui/EmptyState';
 
 interface WorkoutExecutionProps {
   workout: any; // using any to support the dynamic JSONB structure
@@ -44,17 +44,17 @@ interface ExecBlock {
 }
 
 /**
- * Extrator Universal de Exercícios (Deep Hydration)
+ * Extrator Universal de ExercÃ­cios (Deep Hydration)
  * 
  * POR QUE ISSO EXISTE?
- * O aplicativo TreinoBase B2B2C salva a prescrição de treinos usando a tipagem JSONB na coluna `estrutura` ou `conteudo` no Supabase.
- * Para evitar que atualizações no formato do construtor pelo Personal Trainer (B2B) quebrem o frontend do Aluno (B2C),
- * este extrator atua como um Middleware Agnóstico. 
+ * O aplicativo TreinoBase B2B2C salva a prescriÃ§Ã£o de treinos usando a tipagem JSONB na coluna `estrutura` ou `conteudo` no Supabase.
+ * Para evitar que atualizaÃ§Ãµes no formato do construtor pelo Personal Trainer (B2B) quebrem o frontend do Aluno (B2C),
+ * este extrator atua como um Middleware AgnÃ³stico. 
  * 
  * COMO FUNCIONA:
- * Ele desestrutura o payload e procura todas as chaves históricas (`divisoes`, `blocos`, `rotinas`, `fichas`),
- * normalizando-as para uma interface única compreensível pela tela de execução. Se encontrar um array solto, ele o empacota
- * em uma divisão sintética ('Treino Completo').
+ * Ele desestrutura o payload e procura todas as chaves histÃ³ricas (`divisoes`, `blocos`, `rotinas`, `fichas`),
+ * normalizando-as para uma interface Ãºnica compreensÃ­vel pela tela de execuÃ§Ã£o. Se encontrar um array solto, ele o empacota
+ * em uma divisÃ£o sintÃ©tica ('Treino Completo').
  * 
  * @param payload Objeto JSONB ou String stringificada retornado pelo Supabase (tabela `treinos`)
  * @returns Array padronizado: { id, nome, exercicios: [] }[]
@@ -65,7 +65,7 @@ const extrairDivisoesEExercicios = (payload: any) => {
   try {
     const dados = typeof payload === 'string' ? JSON.parse(payload) : payload;
 
-    // 1. Array puro de divisões (Formato Flat / Antigo)
+    // 1. Array puro de divisÃµes (Formato Flat / Antigo)
     if (Array.isArray(dados)) {
        return [{ id: 'div-unica', nome: 'Treino Completo', exercicios: dados }];
     }
@@ -76,12 +76,12 @@ const extrairDivisoesEExercicios = (payload: any) => {
     if (Array.isArray(listaDivisoes) && listaDivisoes.length > 0) {
       return listaDivisoes.map((div, idx) => ({
         id: div.id || `div-${idx}`,
-        nome: div.nome || div.titulo || `Divisão ${String.fromCharCode(65 + idx)}`,
+        nome: div.nome || div.titulo || `DivisÃ£o ${String.fromCharCode(65 + idx)}`,
         exercicios: div.exercicios || div.items || div.itens || div.blocos || []
       }));
     }
 
-    // 3. Fallback: JSON sem raiz de divisões, mas com array de exercícios flat
+    // 3. Fallback: JSON sem raiz de divisÃµes, mas com array de exercÃ­cios flat
     const listaExerciciosFlat = dados.exercicios || dados.items || dados.itens;
     if (Array.isArray(listaExerciciosFlat) && listaExerciciosFlat.length > 0) {
       return [{ id: 'div-unica', nome: 'Treino Completo', exercicios: listaExerciciosFlat }];
@@ -93,17 +93,28 @@ const extrairDivisoesEExercicios = (payload: any) => {
   return [];
 };
 
-export default function WorkoutExecution({ workout, user, onFinish, onCancel, onMinimize }: WorkoutExecutionProps) {
+import { useLocation, useNavigate, useOutletContext } from 'react-router-dom';
+
+export default function WorkoutExecution() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const workout = location.state?.workout;
+  const { user, onFinishWorkoutExecution } = useOutletContext<any>();
+  const onCancel = () => navigate(-1);
+  const onMinimize = () => navigate(-1);
+  const onFinish = (session: any) => { if(onFinishWorkoutExecution) onFinishWorkoutExecution(session); navigate(-1); };
+
+  if (!workout) return <div className="p-6 text-white">Treino não encontrado. <button onClick={onCancel}>Voltar</button></div>;
   // Session details
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isFinishing, setIsFinishing] = useState(false);
 
-  // Debug de Segurança (Removido do Code Freeze)
+  // Debug de SeguranÃ§a (Removido do Code Freeze)
 
   // Tab state for when there are multiple divisions
   const divisoesProcessadas = extrairDivisoesEExercicios(workout.estrutura || workout.conteudo || workout);
   
-  // Encontra a primeira divisão que realmente tem exercícios dentro
+  // Encontra a primeira divisÃ£o que realmente tem exercÃ­cios dentro
   const primeiraDivisaoValida = divisoesProcessadas.find(d => d.exercicios && d.exercicios.length > 0) || divisoesProcessadas[0];
 
   const [activeDivisaoId, setActiveDivisaoId] = useState<string>(() => {
@@ -117,15 +128,15 @@ export default function WorkoutExecution({ workout, user, onFinish, onCancel, on
     let activeDiv = divisoesProcessadas.find((d: any) => d.id === activeDivisaoId) || divisoesProcessadas[0];
     let exerciciosParaRenderizar = activeDiv?.exercicios || [];
 
-    // 3. TRAVA DE SEGURANÇA (BYPASS): Se a divisão ativa estiver vazia ou não for encontrada,
-    // pega a primeira divisão com exercícios ou junta todos os exercícios do treino em uma lista única!
+    // 3. TRAVA DE SEGURANÃ‡A (BYPASS): Se a divisÃ£o ativa estiver vazia ou nÃ£o for encontrada,
+    // pega a primeira divisÃ£o com exercÃ­cios ou junta todos os exercÃ­cios do treino em uma lista Ãºnica!
     if (exerciciosParaRenderizar.length === 0) {
       const divisaoComDados = divisoesProcessadas.find(d => d.exercicios && d.exercicios.length > 0);
       if (divisaoComDados) {
         exerciciosParaRenderizar = divisaoComDados.exercicios;
         setActiveDivisaoId(divisaoComDados.id);
       } else {
-        // Último recurso: extrai qualquer array de dentro do objeto treino que pareça ser um exercício
+        // Ãšltimo recurso: extrai qualquer array de dentro do objeto treino que pareÃ§a ser um exercÃ­cio
         const dumpExercicios = Object.values(workout.estrutura || workout.conteudo || workout).filter(val => Array.isArray(val) && val.length > 0).flat();
         if (dumpExercicios.length > 0) {
           exerciciosParaRenderizar = dumpExercicios;
@@ -150,7 +161,7 @@ export default function WorkoutExecution({ workout, user, onFinish, onCancel, on
             const restBase = parseInt(ex.descanso) || 60;
             return {
               id: ex.id || `ex-${idx}-${exIdx}`,
-              name: ex.nome || 'Exercício',
+              name: ex.nome || 'ExercÃ­cio',
               obs: ex.obs,
               technique: ex.metodo?.nome || 'none',
               sets: Array.from({ length: seriesCount }).map((_, sIdx) => ({
@@ -174,11 +185,11 @@ export default function WorkoutExecution({ workout, user, onFinish, onCancel, on
         return {
           id: item.id || `block-${idx}`,
           type: 'straight',
-          name: item.exercicio || 'Exercício Simples',
+          name: item.exercicio || 'ExercÃ­cio Simples',
           exercises: [
             {
               id: item.id || `ex-${idx}`,
-              name: item.exercicio || 'Exercício',
+              name: item.exercicio || 'ExercÃ­cio',
               obs: item.obs,
               technique: item.metodo || 'none',
               sets: Array.from({ length: seriesCount }).map((_, sIdx) => ({
@@ -220,7 +231,7 @@ export default function WorkoutExecution({ workout, user, onFinish, onCancel, on
 
   // Success celebration message
   const [showCelebration, setShowCelebration] = useState(false);
-  const [celebrationMsg, setCelebrationMsg] = useState('Série concluída!');
+  const [celebrationMsg, setCelebrationMsg] = useState('SÃ©rie concluÃ­da!');
 
   // Generate real audio beep using browser's AudioContext
   const playBeep = () => {
@@ -306,7 +317,7 @@ export default function WorkoutExecution({ workout, user, onFinish, onCancel, on
 
     if (newCompleted) {
       // Show celebration
-      const messages = ['Execução impecável!', 'Série destruída! 🔥', 'Monstruoso!', 'Progresso puro!'];
+      const messages = ['ExecuÃ§Ã£o impecÃ¡vel!', 'SÃ©rie destruÃ­da! ðŸ”¥', 'Monstruoso!', 'Progresso puro!'];
       setCelebrationMsg(messages[Math.floor(Math.random() * messages.length)]);
       setShowCelebration(true);
       setTimeout(() => setShowCelebration(false), 2000);
@@ -357,7 +368,7 @@ export default function WorkoutExecution({ workout, user, onFinish, onCancel, on
         data_execucao: new Date().toISOString(),
         carga_total_kg: volumeTotal,
         duracao_minutos: Math.floor(elapsedSeconds / 60),
-        detalhes_execucao: JSON.stringify(completedLog) // Mantém como JSON.stringify p/ text/jsonb
+        detalhes_execucao: JSON.stringify(completedLog) // MantÃ©m como JSON.stringify p/ text/jsonb
       };
 
       // Tenta gravar na tabela 'sessoes'
@@ -392,12 +403,12 @@ export default function WorkoutExecution({ workout, user, onFinish, onCancel, on
         <EmptyState 
           icon={AlertCircle}
           title="Treino Vazio"
-          description="Este treino ainda não possui exercícios vinculados na divisão selecionada."
+          description="Este treino ainda nÃ£o possui exercÃ­cios vinculados na divisÃ£o selecionada."
         />
         
-        {/* DEBUG DE TELA (RAIO-X VISUAL TEMPORÁRIO) */}
+        {/* DEBUG DE TELA (RAIO-X VISUAL TEMPORÃRIO) */}
         <div className="mt-4 w-full max-w-lg bg-red-950/20 border border-red-900/50 p-4 rounded-xl text-left overflow-hidden">
-          <p className="text-xs font-bold text-red-500 mb-2">DIAGNÓSTICO PAYLOAD (RAIO-X)</p>
+          <p className="text-xs font-bold text-red-500 mb-2">DIAGNÃ“STICO PAYLOAD (RAIO-X)</p>
           <pre className="text-[10px] text-red-400 overflow-auto max-h-40 hide-scrollbar">
             {JSON.stringify(workout.estrutura || workout.conteudo || workout, null, 2)}
           </pre>
@@ -408,7 +419,7 @@ export default function WorkoutExecution({ workout, user, onFinish, onCancel, on
           className="mt-6 w-full max-w-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-4 py-3 rounded-xl border border-zinc-700/50 transition-all font-medium flex items-center justify-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
-          Voltar para Início
+          Voltar para InÃ­cio
         </button>
       </div>
     );
@@ -425,7 +436,7 @@ export default function WorkoutExecution({ workout, user, onFinish, onCancel, on
           </button>
 
           <div className="text-center flex-1">
-            <span className="text-[10px] sm:text-xs uppercase font-bold tracking-widest text-lime-400">SESSÃO ATIVA</span>
+            <span className="text-[10px] sm:text-xs uppercase font-bold tracking-widest text-lime-400">SESSÃƒO ATIVA</span>
             <h2 className="font-sora font-extrabold text-sm sm:text-lg truncate max-w-full mx-auto px-2">{workout.name || workout.titulo}</h2>
           </div>
 
@@ -454,7 +465,7 @@ export default function WorkoutExecution({ workout, user, onFinish, onCancel, on
                   }
                 `}
               >
-                {div.nome || div.titulo || 'Divisão'}
+                {div.nome || div.titulo || 'DivisÃ£o'}
               </button>
             ))}
           </div>
@@ -498,7 +509,7 @@ export default function WorkoutExecution({ workout, user, onFinish, onCancel, on
                       >
                         {/* Left Side: Info */}
                         <div className="w-12 text-center shrink-0">
-                          <span className="text-xs font-bold text-zinc-500 block mb-0.5">Série {set.setNumber}</span>
+                          <span className="text-xs font-bold text-zinc-500 block mb-0.5">SÃ©rie {set.setNumber}</span>
                           <span className={`text-sm font-mono font-bold ${set.completed ? 'text-emerald-400' : 'text-zinc-300'}`}>{set.repsPrescribed}</span>
                         </div>
 
@@ -561,7 +572,7 @@ export default function WorkoutExecution({ workout, user, onFinish, onCancel, on
               {formatTime(elapsedSeconds)}
             </div>
             <div className="text-zinc-400">
-              {completedSetsCount} de {totalSets} Séries
+              {completedSetsCount} de {totalSets} SÃ©ries
             </div>
           </div>
           
@@ -662,3 +673,4 @@ export default function WorkoutExecution({ workout, user, onFinish, onCancel, on
     </div>
   );
 }
+

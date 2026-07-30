@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Dumbbell, User, Award, ShieldAlert, Sparkles, Loader2, Eye, EyeOff } from 'lucide-react';
 import { User as UserType } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../services/supabaseClient';
 
 interface OnboardingProps {
   onComplete: (user: UserType) => void;

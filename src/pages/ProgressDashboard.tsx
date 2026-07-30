@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { TrendingUp, Award, Flame, Dumbbell, Calendar, HelpCircle, ChevronRight, Activity, Users, Loader2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../services/supabaseClient';
 import { User as UserType } from '../types';
-import { EmptyState } from './ui/EmptyState';
+import { EmptyState } from '../components/ui/EmptyState';
 
 interface ProgressDashboardProps {
   currentUser: UserType;
 }
 
-export default function ProgressDashboard({ currentUser }: ProgressDashboardProps) {
+import { useOutletContext } from 'react-router-dom';
+
+export default function ProgressDashboard() {
+  const { currentUser } = useOutletContext<any>();
   const [students, setStudents] = useState<Array<{ id: string, name: string }>>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>(currentUser.role === 'aluno' ? currentUser.id : '');
   const [isLoading, setIsLoading] = useState(true);
@@ -180,7 +183,7 @@ export default function ProgressDashboard({ currentUser }: ProgressDashboardProp
               Novo Recorde: {pr.weight} kg
             </div>
             {pr.increase > 0 && pr.increase !== pr.weight && (
-              <div className="text-xs text-success font-bold mt-1">+{pr.increase}kg desde o último marco</div>
+              <div className="text-xs text-success font-bold mt-1">+{pr.increase}kg desde o Ãºltimo marco</div>
             )}
           </div>
         </div>
@@ -199,7 +202,7 @@ export default function ProgressDashboard({ currentUser }: ProgressDashboardProp
           <div className="pb-6">
             <div className="text-xs text-text-secondary font-mono">{dp.date.split('-').reverse().join('/')}</div>
             <div className="font-sora font-bold text-text-primary text-sm mt-1">
-              Treino Concluído
+              Treino ConcluÃ­do
             </div>
             <div className="text-xs text-text-muted mt-1">Volume total do dia: {dp.volume}kg</div>
           </div>
@@ -213,8 +216,8 @@ export default function ProgressDashboard({ currentUser }: ProgressDashboardProp
       
       {/* View Header */}
       <div>
-        <span className="text-[10px] sm:text-xs uppercase font-bold tracking-widest text-teal-data block">DESEMPENHO AVANÇADO</span>
-        <h1 className="font-sora font-extrabold text-lg sm:text-2xl text-text-primary">Evolução do Atleta</h1>
+        <span className="text-[10px] sm:text-xs uppercase font-bold tracking-widest text-teal-data block">DESEMPENHO AVANÃ‡ADO</span>
+        <h1 className="font-sora font-extrabold text-lg sm:text-2xl text-text-primary">EvoluÃ§Ã£o do Atleta</h1>
       </div>
 
       {currentUser.role === 'personal' && (
@@ -250,13 +253,13 @@ export default function ProgressDashboard({ currentUser }: ProgressDashboardProp
         <EmptyState 
           icon={Users}
           title="Selecione um aluno"
-          description="Escolha um aluno no menu acima para visualizar o histórico de evolução e gráficos de desempenho."
+          description="Escolha um aluno no menu acima para visualizar o histÃ³rico de evoluÃ§Ã£o e grÃ¡ficos de desempenho."
         />
       ) : dataPoints.length === 0 ? (
         <EmptyState 
           icon={Activity}
-          title="Nenhum dado histórico"
-          description="Este aluno ainda não possui dados históricos de treino salvos para gerar gráficos."
+          title="Nenhum dado histÃ³rico"
+          description="Este aluno ainda nÃ£o possui dados histÃ³ricos de treino salvos para gerar grÃ¡ficos."
         />
       ) : (
         <>
@@ -271,7 +274,7 @@ export default function ProgressDashboard({ currentUser }: ProgressDashboardProp
                     : 'bg-surf-1 text-text-muted hover:text-text-primary border border-surf-2'
                 }`}
               >
-                Visão Geral
+                VisÃ£o Geral
               </button>
               {exercises.map(ex => (
                 <button
@@ -293,8 +296,8 @@ export default function ProgressDashboard({ currentUser }: ProgressDashboardProp
           <div className="bg-surf-1 border border-surf-2 rounded-2xl p-5 shadow-sm">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h3 className="font-sora font-extrabold text-text-primary">Curva de Progressão</h3>
-                <span className="text-xs text-text-secondary">{selectedExerciseId === 'all' ? 'Volume Global' : 'Carga Máxima'}</span>
+                <h3 className="font-sora font-extrabold text-text-primary">Curva de ProgressÃ£o</h3>
+                <span className="text-xs text-text-secondary">{selectedExerciseId === 'all' ? 'Volume Global' : 'Carga MÃ¡xima'}</span>
               </div>
               
               <div className="flex bg-surf-2 p-1 rounded-lg">
@@ -372,3 +375,4 @@ export default function ProgressDashboard({ currentUser }: ProgressDashboardProp
     </div>
   );
 }
+
